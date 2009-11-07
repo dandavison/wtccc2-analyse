@@ -1,11 +1,12 @@
 #+title:      A program for analysis of WTCCC2 data
-#+OPTIONS:    H:1 num:t toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t TeX:t LaTeX:t skip:nil d:(HIDE) tags:not-in-toc
+#+OPTIONS:    H:3 num:t toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t TeX:t LaTeX:t skip:nil d:(HIDE) tags:not-in-toc
 #+OPTIONS:    author:nil creator:nil timestamp:nil
 #+STARTUP:    align fold nodlcheck hidestars odd lognotestate hideblocks
 #+AUTHOR:     Dan Davison
 #+EMAIL:      davison@stats.ox.ac.uk
 #+LANGUAGE:   en
 #+property:   tangle yes
+#+INFOJS_OPT: view:content toc:nil
 
 * License							   :noexport:
 #    This program is free software; you can redistribute it and/or modify
