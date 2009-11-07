@@ -1,0 +1,333 @@
+#+title:      A program for analysis of WTCCC2 data
+#+OPTIONS:    H:1 num:t toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t TeX:t LaTeX:t skip:nil d:(HIDE) tags:not-in-toc
+#+OPTIONS:    author:nil creator:nil timestamp:nil
+#+STARTUP:    align fold nodlcheck hidestars odd lognotestate hideblocks
+#+AUTHOR:     Dan Davison
+#+EMAIL:      davison@stats.ox.ac.uk
+#+LANGUAGE:   en
+#+property:   tangle yes
+
+* Description
+  This program performs PCA of a data set of SNP genotypes defined by
+  the following specifications:
+  - The WTCCC2 cohorts to be included
+  - The chromosomes to be included
+  - The SNPs to be included
+
+Example usage:
+#+srcname: example usage
+#+begin_src sh 
+./wtccc2-pca.py --cohorts '58C NBS POBI' --snpfile ~/wtccc2/celine-snps-ill
+#+end_src
+
+will perform PCA of the 3 cohorts indicated, using the subset of SNPs
+specified by the file ~/wtccc2/celine-snps-ill.map. It excludes all
+individuals specified in the cohort exclusions directory, puts the data
+together and runs the analysis on the cluster leaving output files on
+the cluster. Additional arguments are 
+
+#+srcname: arguments
+#+begin_src org
+--chrom   :: specify chromosomes (defauklts to all autosomes)
+--exclude :: specify a file containing additional exclusions (individuals from any cohorts)
+#+end_src
+
+
+This HTML file is for viewing only. Download the python code from
+[[file:wtccc2-pca.py][here]], and save it in the [[file:shellfish.org][shellfish]] download directory (you need to
+have [[file:shellfish.org][shellfish]] installed).
+
+* Header
+*** Imports
+#+begin_src python
+import sys, os, time
+from cmdline import CommandLineApp
+import subprocess
+from subprocess import PIPE
+from util import *
+#+end_src
+*** Globals
+#+begin_src python
+__width__ = 30
+__home__ = subprocess.Popen('echo $HOME', shell=True, stdout=PIPE).communicate()[0].strip()
+__datadir__ = '/data/oak/project/wtccc2'
+__dry_run__ = False
+__insectdir__ = 'insect_out'
+#+end_src
+
+* Main class 
+#+begin_src python
+class PCA(CommandLineApp):
+#+end_src
+*** Init
+#+begin_src python
+    def __init__(self):
+        CommandLineApp.__init__(self)
+        
+        op = self.option_parser
+        op.set_usage('usage: not sure at the moment')
+        
+        op.add_option('--cohorts', dest='cohorts', type='string', default='',
+                      help='Space-separated list of cohorts')
+        op.add_option('--chrom', dest='chroms', type='string', default=None,
+                      help='Chromosomes to include (space-separated; default is 1-22)')
+        op.add_option('--snpfile', dest='snpfile', type='string', default=None,
+                      help='File containing SNPs to use (.map format)')
+        op.add_option('--exclude', dest='excludefile', type='string', default=None,
+                      help='File containing IDs of individuals to exclude in addition to project exclusions (one ID per line)')
+        op.add_option('-n', dest='dry_run', default=False, action='store_true',
+                      help="Don't actually do anything, just print commands")
+        op.add_option('--platform', dest='platform', type='string', default='illumina')
+#+end_src
+*** Main
+#+begin_src python
+    def main(self):
+        self.cohorts = self.options.cohorts.split()
+        if self.options.chroms:
+            self.chroms = map(int, self.options.chroms.split())
+        else:
+            self.chroms = [c+1 for c in range(22)]
+        self.snpfile = self.options.snpfile
+        self.say_hello()
+        self.create_data_set()
+        self.pca()
+#+end_src
+        
+*** Say hello
+#+begin_src python
+    def say_hello(self):
+        print(time.ctime())
+        print('Cohorts'.ljust(__width__) + '%s' % self.cohorts)
+        print('Chromosomes'.ljust(__width__) + '%s' % self.chroms)
+        print('SNP file'.ljust(__width__) + '%s' % self.snpfile)
+        if self.options.dry_run:
+            print('Dry run')
+#+end_src
+*** Create data set
+#+begin_src python
+    def create_data_set(self):
+
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+               
+        print('Intersecting and concatenating chromosome files\n')
+        
+        if not all(map(os.path.exists, [coh + '.gen' for coh in self.cohorts])):
+            self.insect_chromosome_files()
+
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Restricting to selected SNPs and converting to .geno\n')
+
+        rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
+        xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
+        def files_exist(bnames):
+            geno = [b + '.geno' for b in bnames]
+            maps = [b + '.map' for b in bnames]
+            return all(map(os.path.exists, flatten([geno, maps])))
+
+        if not (files_exist(rfiles) or files_exist(xfiles)):
+            self.concatenate_and_subset_snps_and_convert_to_geno()
+
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Excluding individuals\n')
+
+        if not files_exist(xfiles):
+            self.exclude_individuals()
+
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Combining data across cohorts\n')
+        if not files_exist([excluded_genofile('all', self.snpfile)]):
+            self.combine_cohorts()
+#+end_src
+***** Insect chromosome files
+      - For each chromosome, restrict cohorts to maximal common set of SNPs
+      - Remove per-chromosome uninsected files
+#+begin_src python
+    def insect_chromosome_files(self):
+        outdir = __insectdir__
+        if not os.path.exists(outdir): os.mkdir(outdir)
+        for chrom in self.chroms:
+            fnames = ['%s-%02d.tmp' % (coh, chrom) for coh in self.cohorts]
+            for i in range(len(self.cohorts)):
+                coh = self.cohorts[i]
+                with open(fnames[i], 'w') as f:
+                    Popen(['gunzip', '-vc', gen_gz_file(coh, chrom)], stdout=f).communicate()
+                    
+            cmd = ['insect', '-v', "-d ' '", '-f 2', '-o ' + outdir] + fnames
+            # subprocess.Popen(cmd, shell=True).communicate()
+            os.system(' '.join(cmd))
+            map(os.remove, fnames)     
+#+end_src
+***** Subset snps and convert to geno
+      - In each cohort, concatenate across chromosomes and create a
+        .geno file at the requested SNPs
+      - Remove per-chromosome and genome-wide cohort files
+#+begin_src python
+    def concatenate_and_subset_snps_and_convert_to_geno(self):
+        for coh in self.cohorts:
+            with open(coh + '.gen', 'w') as f:
+                cmd = 'cat %s/%s-*' % (__insectdir__, coh)
+                Popen([cmd], shell=True, stdout=f).communicate()
+            if not(os.path.exists(coh + '.sample')):
+                os.symlink(sample_file(coh), coh + '.sample')
+            system('rm %s/%s-*' % (__insectdir__, coh))
+
+            cmd = 'shellfish --make-geno --file %s --file2 %s --out %s' % \
+                (coh, self.snpfile, restricted_genofile(coh, self.snpfile) )
+            print(cmd)
+            os.system(cmd)
+            system('rm %s.gen %s.map' % (coh,coh))
+            system('rmdir %s' % __insectdir__)
+#+end_src
+***** Check map files are identical
+#+begin_src python
+    def reduce_to_single_map_file(self):
+        map_files = [restricted_genofile(coh, self.snpfile) + '.map' for coh in self.cohorts]
+        diffs = [diff(map_files[i], map_files[i-1]) for i in range(1, len(map_files))]
+        if any(diffs):
+            raise Exception('Map files not identical')
+#+end_src
+***** Make individual exclusions
+      - In each cohort, make the project exclusions
+      - Create .geno and .map files for excluded data sets
+#+begin_src python
+    def exclude_individuals(self):
+        for coh in self.cohorts:
+            
+            # Make sorted list of IDs to be excluded
+            cmd = 'cat %s/*.exclude.txt %s | sort | uniq > %s.xids' % \
+                (exclude_dir(coh), self.options.excludefile or "", coh)
+            system(cmd)
+
+            # Get cohort indices of individuals to be excluded
+            # These are the (line index in sample file) - 2, because sample file has 2 header lines.
+            cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
+                (sample_file(coh), coh, coh)
+            system(cmd)
+
+            # Check for IDs that did not appear in cohort sample file
+            cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
+                (coh, coh)
+            system(cmd)
+            cmd = 'grep -vF NA %s.xidx | sort -n > tmp && mv tmp %s.xidx' % \
+                (coh, coh)
+            system(cmd)
+
+            # Exclude individuals from genotype data
+            cmd = 'columns -v -f %s.xidx < %s.geno > %s.geno' % \
+                (coh,
+                 restricted_genofile(coh, self.snpfile),
+                 excluded_genofile(coh, self.snpfile))
+            system(cmd)
+
+            # Get IDs of included individuals
+            cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
+                (sample_file(coh), coh, excluded_genofile(coh, self.snpfile))
+            system(cmd)
+
+            system('rm %s.geno' % restricted_genofile(coh, self.snpfile))
+            system('mv %s.map %s.map' % (
+                    restricted_genofile(coh, self.snpfile), excluded_genofile(coh, self.snpfile)))
+#+end_src
+***** Combine data across cohorts
+      - paste the cohort data files together side-by-side
+      - create single pair of {.geno, .map} files
+#+begin_src python
+    def combine_cohorts(self):
+        geno_files = [excluded_genofile(coh, self.snpfile) + '.geno' for coh in self.cohorts]
+        map_files = [excluded_genofile(coh, self.snpfile) + '.map' for coh in self.cohorts]
+        cmd = "paste -d '\\0' %s > %s" % (
+            ' '.join(geno_files),
+            excluded_genofile('all', self.snpfile) + '.geno')
+        system(cmd)
+        system('cp %s %s.map' % (
+                map_files[0], excluded_genofile('all', self.snpfile)))
+        system('rm %s' % ' '.join(geno_files))
+        map(os.remove, map_files)
+#+end_src
+*** PCA
+#+begin_src python
+    def pca(self):
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Running shellfish on remote machine\n')
+
+        remote = 'login2-cluster1'
+        remote_dir = 'shellfish-%s' % datetimenow()
+
+        if not os.path.exists(excluded_genofile('all', self.snpfile) + '.evecs'):
+
+            cmd = "ssh %s 'mkdir -p %s'" % (remote, remote_dir)
+            system(cmd)
+            
+            tup = ((excluded_genofile('all', self.snpfile),) * 2) + (remote, remote_dir)
+            cmd = 'scp %s.geno %s.map %s:%s/' % tup
+            system(cmd)
+            
+            remote_cmd = "shellfish --pca --sge --sge-level 2 --numpcs 10 --maxprocs 500 "
+            remote_cmd += "--file %s/%s --out %s/%s" % ((
+                remote_dir, excluded_genofile('all', self.snpfile)) * 2)
+            remote_cmd = "'nohup %s < /dev/null > %s/pca.log 2>&1 &'" % (remote_cmd, remote_dir)
+
+            cmd = 'ssh %s %s' % (remote, remote_cmd)
+            system(cmd)
+#+end_src
+* Utilities
+*** Genotype file
+#+begin_src python
+def gen_gz_file(coh, chrom):
+    return '%s/%s/illumina/calls/%s_%02d_illumina.gen.gz' % \
+        (__datadir__, coh, coh, chrom)
+
+#+end_src
+*** Sample file
+#+begin_src python
+def sample_file(coh):
+    return '%s/%s/illumina/calls/%s_illumina.sample' % \
+        (__datadir__, coh, coh)
+#+end_src
+	     
+*** Restricted genofile
+#+begin_src python
+def restricted_genofile(coh, snpfile):
+    return coh + '-' + os.path.basename(snpfile)
+#+end_src
+*** Exclude dir
+#+begin_src python
+def exclude_dir(coh):
+    return '%s/%s/illumina/exclusions' % (__datadir__, coh)
+#+end_src
+    
+*** Excluded genofile
+#+begin_src python
+def excluded_genofile(coh, snpfile):
+    return coh + 'x-' + os.path.basename(snpfile)
+#+end_src
+
+*** Popen
+#+begin_src python
+def Popen(cmd, shell=False, stdout=None):
+    print(' '.join(cmd) + (' > ' + stdout.name if stdout else ''))
+    if pca.options.dry_run:
+        return subprocess.Popen('', shell=True)
+    else:
+        return subprocess.Popen(cmd, shell=shell, stdout=stdout)
+#+end_src
+
+*** System
+#+begin_src python
+def system(cmd):
+    print(cmd)
+    os.system(cmd)
+#+end_src
+    
+*** Run from command line
+#+begin_src python
+if __name__ == '__main__':
+      pca = PCA()
+      # pca.options, main_args = pca.option_parser.parse_args()      
+      pca.run()
+#+end_src
+
+* Org config							   :noexport:
+;; Local Variables: **
+;; org-src-preserve-indentation: t **
+;; End: **
