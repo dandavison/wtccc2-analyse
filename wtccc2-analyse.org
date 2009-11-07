@@ -91,7 +91,8 @@ class PCA(CommandLineApp):
         op.add_option('--snpfile', dest='snpfile', type='string', default=None,
                       help='File containing SNPs to use (.map format)')
         op.add_option('--exclude', dest='excludefile', type='string', default=None,
-                      help='File containing IDs of individuals to exclude in addition to project exclusions (one ID per line)')
+                      help='File containing IDs of individuals to exclude' + \
+                          'in addition to project exclusions (one ID per line)')
         op.add_option('-n', dest='dry_run', default=False, action='store_true',
                       help="Don't actually do anything, just print commands")
         op.add_option('--platform', dest='platform', type='string', default='illumina')
@@ -109,8 +110,7 @@ class PCA(CommandLineApp):
         self.create_data_set()
         self.pca()
 #+end_src
-        
-*** Say hello
+***** Say hello
 #+begin_src python
     def say_hello(self):
         print(time.ctime())
