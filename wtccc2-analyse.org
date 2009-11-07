@@ -71,7 +71,6 @@ __datadir__ = '/data/oak/project/wtccc2'
 __dry_run__ = False
 __insectdir__ = 'insect_out'
 #+end_src
-
 * Main class 
 #+begin_src python
 class PCA(CommandLineApp):
@@ -83,7 +82,10 @@ class PCA(CommandLineApp):
         
         op = self.option_parser
         op.set_usage('usage: not sure at the moment')
-        
+        op.add_option('--pca', dest='pca', default=False,
+                      help='Perform PCA of selected cohorts')
+        op.add_option('--snptest', dest='snptest', default=False,
+                      help='Perform association tests of selected cases & controls')
         op.add_option('--cohorts', dest='cohorts', type='string', default='',
                       help='Space-separated list of cohorts')
         op.add_option('--chrom', dest='chroms', type='string', default=None,
@@ -100,15 +102,26 @@ class PCA(CommandLineApp):
 *** Main
 #+begin_src python
     def main(self):
-        self.cohorts = self.options.cohorts.split()
+        if not (self.options.pca or self.options.snptest) or \
+                (self.options.pca and self.options.snptest):
+            raise Exception 'Use either --pca or --snptest'
         if self.options.chroms:
             self.chroms = map(int, self.options.chroms.split())
         else:
             self.chroms = [c+1 for c in range(22)]
         self.snpfile = self.options.snpfile
         self.say_hello()
-        self.create_data_set()
-        self.pca()
+
+        if self.options.pca:
+            self.cohorts = self.options.cohorts.split()
+            self.create_data_set()
+            self.pca()
+        if self.options.snptest:
+            self.cases = self.options.cases.split()
+            self.controls = self.options.controls.split()
+            self.cohorts = self.cases + self.controls
+            self.create_data_set()
+            self.snptest()
 #+end_src
 ***** Say hello
 #+begin_src python
@@ -123,37 +136,46 @@ class PCA(CommandLineApp):
 *** Create data set
 #+begin_src python
     def create_data_set(self):
-
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-               
-        print('Intersecting and concatenating chromosome files\n')
-        
-        if not all(map(os.path.exists, [coh + '.gen' for coh in self.cohorts])):
+        print('Intersecting chromosome files\n')
+        fnames = ['%s/%s-%02d.tmp' % (__insectdir__, coh, chrom) \
+                      for coh in self.cohorts \
+                      for chrom in self.chroms]
+        if not all(map(os.path.exists, fnames)):
             self.insect_chromosome_files()
 
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('Restricting to selected SNPs and converting to .geno\n')
+        print('Concatenating chromosomes\n')
+        fnames = [coh + '.gen' for coh in self.cohorts]
+        if not all(map(os.path.exists, fnames)):
+            self.concatenate_chromosomes()
 
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Restricting to selected SNPs and converting to .geno\n')
         rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
         xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
         def files_exist(bnames):
             geno = [b + '.geno' for b in bnames]
             maps = [b + '.map' for b in bnames]
             return all(map(os.path.exists, flatten([geno, maps])))
-
         if not (files_exist(rfiles) or files_exist(xfiles)):
-            self.concatenate_and_subset_snps_and_convert_to_geno()
+            self.subset_snps_and_convert_to_geno()
+        rmapfiles = [rfile + '.map' for rfile in rfiles]
+        assert_files_identical(rmapfiles)
 
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Excluding individuals\n')
-
         if not files_exist(xfiles):
             self.exclude_individuals()
 
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('Combining data across cohorts\n')
-        if not files_exist([excluded_genofile('all', self.snpfile)]):
-            self.combine_cohorts()
+        if self.options.pca:
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print('Combining data across cohorts\n')
+            if not files_exist([excluded_genofile('all', self.snpfile)]):
+                self.combine_cohorts()
+
+        if self.options.snptest:
+            self.convert_to_gen()
 #+end_src
 ***** Insect chromosome files
       - For each chromosome, restrict cohorts to maximal common set of SNPs
@@ -174,12 +196,11 @@ class PCA(CommandLineApp):
             os.system(' '.join(cmd))
             map(os.remove, fnames)     
 #+end_src
-***** Subset snps and convert to geno
-      - In each cohort, concatenate across chromosomes and create a
-        .geno file at the requested SNPs
-      - Remove per-chromosome and genome-wide cohort files
-#+begin_src python
-    def concatenate_and_subset_snps_and_convert_to_geno(self):
+***** Concat chromosomes
+      - In each cohort, concatenate across chromosomes
+      - Remove per-chromosome cohort files
+#+begin_src python 
+    def concatenate_chromosomes(self):
         for coh in self.cohorts:
             with open(coh + '.gen', 'w') as f:
                 cmd = 'cat %s/%s-*' % (__insectdir__, coh)
@@ -187,22 +208,34 @@ class PCA(CommandLineApp):
             if not(os.path.exists(coh + '.sample')):
                 os.symlink(sample_file(coh), coh + '.sample')
             system('rm %s/%s-*' % (__insectdir__, coh))
-
-            cmd = 'shellfish --make-geno --file %s --file2 %s --out %s' % \
-                (coh, self.snpfile, restricted_genofile(coh, self.snpfile) )
+#+end_src
+***** Subset snps and convert to geno
+      - In each cohort, create a .geno file at the requested SNPs
+      - Remove genome-wide cohort files
+#+begin_src python
+    def subset_snps_and_convert_to_geno(self):
+        for coh in self.cohorts:
+            cmd = 'shellfish --make-geno --file %s %s --out %s' % \
+                (coh,
+                 '--file2 %s' % self.snpfile if self.snpfile else '',
+                 restricted_genofile(coh, self.snpfile) )
             print(cmd)
             os.system(cmd)
             system('rm %s.gen %s.map' % (coh,coh))
             system('rmdir %s' % __insectdir__)
 #+end_src
-***** Check map files are identical
+***** Convert to gen
 #+begin_src python
-    def reduce_to_single_map_file(self):
-        map_files = [restricted_genofile(coh, self.snpfile) + '.map' for coh in self.cohorts]
-        diffs = [diff(map_files[i], map_files[i-1]) for i in range(1, len(map_files))]
-        if any(diffs):
-            raise Exception('Map files not identical')
+    def convert_to_gen(self):
+        for coh in self.cohorts:
+            cmd = 'shellfish --make-gen --file %s --out %s' % \
+                (coh,
+                 restricted_genfile(coh, self.snpfile) )
+            print(cmd)
+            os.system(cmd)
+            system('rm %s.geno %s.map' % (coh,coh))
 #+end_src
+
 ***** Make individual exclusions
       - In each cohort, make the project exclusions
       - Create .geno and .map files for excluded data sets
@@ -261,6 +294,38 @@ class PCA(CommandLineApp):
         system('rm %s' % ' '.join(geno_files))
         map(os.remove, map_files)
 #+end_src
+*** Snptest
+#+begin_src python
+    def pca(self):
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Running shellfish on remote machine\n')
+
+        remote = 'login2-cluster1'
+        remote_dir = 'shellfish-%s' % datetimenow()
+        outfile = 'results.snptest'
+
+        if not os.path.exists(outfile):
+
+            case_files = [excluded_genofile(coh, self.snpfile) + '.gen' for coh in self.cases]
+            control_files = [excluded_genofile(coh, self.snpfile) + '.gen' for coh in self.controls]
+            case_files = ' '.join(case_files)
+            control_files = ' '.join(control_files)
+
+            cmd = "ssh %s 'mkdir -p %s'" % (remote, remote_dir)
+            system(cmd)
+
+            cmd = 'scp %s %s %s:%s/' % (case_files, control_files, remote, remote_dir)
+            system(cmd)
+            
+            remote_cmd = 'shellfish --snptest --sge --sge-level 2 --maxprocs 100'
+            remote_cmd += ' --cases ' + case_files + ' --controls' + control_files
+            remote_cmd += " --outfile %s/%s" % (remote_dir, outfile)
+            remote_cmd = "'nohup %s < /dev/null > %s/pca.log 2>&1 &'" % (remote_cmd, remote_dir)
+
+            cmd = 'ssh %s %s' % (remote, remote_cmd)
+            system(cmd)
+#+end_src
+
 *** PCA
 #+begin_src python
     def pca(self):
@@ -305,7 +370,10 @@ def sample_file(coh):
 *** Restricted genofile
 #+begin_src python
 def restricted_genofile(coh, snpfile):
-    return coh + '-' + os.path.basename(snpfile)
+    f = coh
+    if snpfile:
+        f += '-' + os.path.basename(snpfile)
+    return f
 #+end_src
 *** Exclude dir
 #+begin_src python
@@ -316,7 +384,10 @@ def exclude_dir(coh):
 *** Excluded genofile
 #+begin_src python
 def excluded_genofile(coh, snpfile):
-    return coh + 'x-' + os.path.basename(snpfile)
+    f = coh
+    if snpfile:
+        f += 'x-' + os.path.basename(snpfile)
+    return f
 #+end_src
 
 *** Popen
@@ -335,7 +406,6 @@ def system(cmd):
     print(cmd)
     os.system(cmd)
 #+end_src
-    
 *** Run from command line
 #+begin_src python
 if __name__ == '__main__':
@@ -343,7 +413,6 @@ if __name__ == '__main__':
       # pca.options, main_args = pca.option_parser.parse_args()      
       pca.run()
 #+end_src
-
 * Org config							   :noexport:
 ;; Local Variables: **
 ;; org-src-preserve-indentation: t **
