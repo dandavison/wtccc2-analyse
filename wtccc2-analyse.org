@@ -261,13 +261,13 @@ class App(CommandLineApp):
             # Make sorted list of IDs to be excluded
             cmd = 'cat %s/*.exclude.txt %s | sort | uniq > %s.xids' % \
                 (exclude_dir(coh), self.options.excludefile or "", coh)
-            system(cmd)
+            system(cmd, verbose=True)
 
             # Get cohort indices of individuals to be excluded
             # These are the (line index in sample file) - 2, because sample file has 2 header lines.
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
                 (sample_file(coh), coh, coh)
-            system(cmd)
+            system(cmd, verbose=True)
             if self.options.pca:
                 format = 'geno'
             else:
@@ -284,7 +284,7 @@ class App(CommandLineApp):
             system(cmd)
             cmd = 'grep -vF NA %s.xidx | sort -n > tmp && mv tmp %s.xidx' % \
                 (coh, coh)
-            system(cmd)
+            system(cmd, verbose=True)
 
             # Exclude individuals from genotype data
             cmd = '%s -v %s %s.xidx < %s.%s > %s.%s' % (
@@ -293,18 +293,18 @@ class App(CommandLineApp):
                 coh,
                 restricted_genofile(coh, self.snpfile), format,
                 excluded_genofile(coh, self.snpfile), format)
-            system(cmd)
+            system(cmd, verbose=True)
                 
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
                 (sample_file(coh), coh, excluded_genofile(coh, self.snpfile))
-            system(cmd)
+            system(cmd, verbose=True)
 
-            system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format))
+            system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format), verbose=True)
             if self.options.pca:
                 system('mv %s.map %s.map' % (
                         restricted_genofile(coh, self.snpfile),
-                        excluded_genofile(coh, self.snpfile)))
+                        excluded_genofile(coh, self.snpfile)), verbose=True)
 #+end_src
 ***** Combine data across cohorts
       - paste the cohort data files together side-by-side
