@@ -58,10 +58,10 @@ have [[file:shellfish.org][shellfish]] installed).
 *** Imports
 #+begin_src python
 import sys, os, time
-from cmdline import CommandLineApp
+from cmdline.cmdline import CommandLineApp
 import subprocess
 from subprocess import PIPE
-from util import *
+from dedpy.ded import *
 #+end_src
 *** Globals
 #+begin_src python

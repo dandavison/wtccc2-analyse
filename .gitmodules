@@ -1,0 +1,6 @@
+[submodule "dedpy"]
+	path = dedpy
+	url = /home/dan/src/dedpy
+[submodule "cmdline"]
+	path = cmdline
+	url = /usr/local/src/cmdline
