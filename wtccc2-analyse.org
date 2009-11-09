@@ -205,9 +205,6 @@ class App(CommandLineApp):
             print('Combining data across cohorts\n')
             if not files_exist([excluded_genofile('all', self.snpfile)]):
                 self.combine_cohorts()
-
-        if self.options.snptest:
-            self.convert_to_gen()
 #+end_src
 ***** Insect chromosome files
       - For each chromosome, restrict cohorts to maximal common set of SNPs
@@ -254,18 +251,6 @@ class App(CommandLineApp):
             system(cmd)
             system('rm %s.gen %s.map' % (coh,coh))
 #+end_src
-***** Convert to gen
-#+begin_src python
-    def convert_to_gen(self):
-        for coh in self.cohorts:
-            cmd = 'shellfish --make-gen --file %s --out %s' % \
-                (coh,
-                 restricted_genfile(coh, self.snpfile) )
-            print(cmd)
-            system(cmd)
-            system('rm %s.geno %s.map' % (coh,coh))
-#+end_src
-
 ***** Make individual exclusions
       - In each cohort, make the project exclusions
       - Create .geno and .map files for excluded data sets
