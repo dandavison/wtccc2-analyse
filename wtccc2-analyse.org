@@ -346,7 +346,7 @@ class App(CommandLineApp):
             system(cmd)
             
             remote_cmd = 'shellfish --snptest --sge --sge-level 2 --maxprocs 100'
-            remote_cmd += ' --cases ' + case_files + ' --controls' + control_files
+            remote_cmd += ' --cases ' + case_files + ' --controls ' + control_files
             remote_cmd += " --outfile %s/%s" % (remote_dir, outfile)
             remote_cmd = "'nohup %s < /dev/null > %s/log 2>&1 &'" % (remote_cmd, remote_dir)
 
