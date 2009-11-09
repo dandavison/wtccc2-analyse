@@ -179,18 +179,21 @@ class App(CommandLineApp):
             system('rm %s/*' % __insectdir__)
             system('rmdir %s' % __insectdir__)
 
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('Restricting to selected SNPs and converting to .geno\n')
-        rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
-        xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
         def files_exist(bnames):
             geno = [b + '.geno' for b in bnames]
             maps = [b + '.map' for b in bnames]
             return all(map(os.path.exists, flatten([geno, maps])))
-        if not (files_exist(rfiles) or files_exist(xfiles)):
-            self.subset_snps_and_convert_to_geno()
-        rmapfiles = [rfile + '.map' for rfile in rfiles]
-        assert_files_identical(rmapfiles)
+
+        rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
+        xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
+
+        if self.options.pca:
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print('Restricting to selected SNPs and converting to .geno\n')
+            if not (files_exist(rfiles) or files_exist(xfiles)):
+                self.subset_snps_and_convert_to_geno()
+            rmapfiles = [rfile + '.map' for rfile in rfiles]
+            assert_files_identical(rmapfiles)
 
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Excluding individuals\n')
