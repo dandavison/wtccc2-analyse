@@ -280,6 +280,15 @@ class App(CommandLineApp):
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
                 (sample_file(coh), coh, coh)
             system(cmd)
+            if self.options.pca:
+                format = '.geno'
+            else:
+                format = '.gen'
+                # Compute columns of .gen file to be excluded
+                idx = map(int(ded.read_lines('%s.idx' % coh)))
+                firstofthree = [6 + (i-1)*3 for i in idx]
+                idx = ded.flatten([range(s, s+3) for s in firstofthree])
+                ded.write_lines(idx, '%s.idx' % coh)
 
             # Check for IDs that did not appear in cohort sample file
             cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
@@ -290,20 +299,22 @@ class App(CommandLineApp):
             system(cmd)
 
             # Exclude individuals from genotype data
-            cmd = 'columns -v -f %s.xidx < %s.geno > %s.geno' % \
-                (coh,
-                 restricted_genofile(coh, self.snpfile),
-                 excluded_genofile(coh, self.snpfile))
+            cmd = 'columns -v -f %s.xidx < %s.%s > %s.%s' % (
+                coh,
+                restricted_genofile(coh, self.snpfile), format,
+                excluded_genofile(coh, self.snpfile), format)
             system(cmd)
-
+                
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
                 (sample_file(coh), coh, excluded_genofile(coh, self.snpfile))
             system(cmd)
 
-            system('rm %s.geno' % restricted_genofile(coh, self.snpfile))
-            system('mv %s.map %s.map' % (
-                    restricted_genofile(coh, self.snpfile), excluded_genofile(coh, self.snpfile)))
+            system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format))
+            if self.options.pca:
+                system('mv %s.map %s.map' % (
+                        restricted_genofile(coh, self.snpfile),
+                        excluded_genofile(coh, self.snpfile)))
 #+end_src
 ***** Combine data across cohorts
       - paste the cohort data files together side-by-side
