@@ -284,9 +284,9 @@ class App(CommandLineApp):
                 (sample_file(coh), coh, coh)
             system(cmd)
             if self.options.pca:
-                format = '.geno'
+                format = 'geno'
             else:
-                format = '.gen'
+                format = 'gen'
                 # Compute columns of .gen file to be excluded
                 idx = map(int, read_lines('%s.xidx' % coh))
                 firstofthree = [6 + (i-1)*3 for i in idx]
