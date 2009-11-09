@@ -288,10 +288,10 @@ class App(CommandLineApp):
             else:
                 format = '.gen'
                 # Compute columns of .gen file to be excluded
-                idx = map(int(ded.read_lines('%s.idx' % coh)))
+                idx = map(int(read_lines('%s.idx' % coh)))
                 firstofthree = [6 + (i-1)*3 for i in idx]
-                idx = ded.flatten([range(s, s+3) for s in firstofthree])
-                ded.write_lines(idx, '%s.idx' % coh)
+                idx = flatten([range(s, s+3) for s in firstofthree])
+                write_lines(idx, '%s.idx' % coh)
 
             # Check for IDs that did not appear in cohort sample file
             cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
