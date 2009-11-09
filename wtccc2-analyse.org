@@ -220,7 +220,7 @@ class App(CommandLineApp):
                     
             cmd = ['insect', '-v', "-d ' '", '-f 2', '-o ' + outdir] + fnames
             # subprocess.Popen(cmd, shell=True).communicate()
-            os.system(' '.join(cmd))
+            system(' '.join(cmd))
             map(os.remove, fnames)     
 #+end_src
 ***** Concat chromosomes
@@ -247,7 +247,7 @@ class App(CommandLineApp):
                  '--file2 %s' % self.snpfile if self.snpfile else '',
                  restricted_genofile(coh, self.snpfile) )
             print(cmd)
-            os.system(cmd)
+            system(cmd)
             system('rm %s.gen %s.map' % (coh,coh))
             system('rmdir %s' % __insectdir__)
 #+end_src
@@ -259,7 +259,7 @@ class App(CommandLineApp):
                 (coh,
                  restricted_genfile(coh, self.snpfile) )
             print(cmd)
-            os.system(cmd)
+            system(cmd)
             system('rm %s.geno %s.map' % (coh,coh))
 #+end_src
 
@@ -427,12 +427,6 @@ def Popen(cmd, shell=False, stdout=None):
         return subprocess.Popen(cmd, shell=shell, stdout=stdout)
 #+end_src
 
-*** System
-#+begin_src python
-def system(cmd):
-    print(cmd)
-    os.system(cmd)
-#+end_src
 *** Run from command line
 #+begin_src python
 if __name__ == '__main__':
