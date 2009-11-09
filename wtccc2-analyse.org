@@ -33,8 +33,8 @@
 
 Example usage:
 #+srcname: example usage
-#+begin_src sh 
-./wtccc2-pca.py --cohorts '58C NBS POBI' --snpfile ~/wtccc2/celine-snps-ill
+#+begin_src sh :tangle no
+./wtccc2-analyse.py --cohorts '58C NBS POBI' --snpfile ~/wtccc2/celine-snps-ill
 #+end_src
 
 will perform PCA of the 3 cohorts indicated, using the subset of SNPs
@@ -70,10 +70,11 @@ __home__ = subprocess.Popen('echo $HOME', shell=True, stdout=PIPE).communicate()
 __datadir__ = '/data/oak/project/wtccc2'
 __dry_run__ = False
 __insectdir__ = 'insect_out'
+__progname__ = 'wtccc2-analyse'
 #+end_src
 * Main class 
 #+begin_src python
-class PCA(CommandLineApp):
+class App(CommandLineApp):
 #+end_src
 *** Init
 #+begin_src python
@@ -81,13 +82,21 @@ class PCA(CommandLineApp):
         CommandLineApp.__init__(self)
         
         op = self.option_parser
-        op.set_usage('usage: not sure at the moment')
-        op.add_option('--pca', dest='pca', default=False,
+        usage = []
+        usage.append('%s --snptest --controls 58C --cases NBS --chrom 21 22' % __progname__)
+        usage.append('%s --cohorts "58C NBS POBI" --snpfile ~/wtccc2/celine-snps-ill'% __progname__)
+        op.set_usage('\n' + '\n'.join(usage))
+
+        op.add_option('--pca', dest='pca', default=False, action='store_true',
                       help='Perform PCA of selected cohorts')
-        op.add_option('--snptest', dest='snptest', default=False,
+        op.add_option('--snptest', dest='snptest', default=False, action='store_true',
                       help='Perform association tests of selected cases & controls')
         op.add_option('--cohorts', dest='cohorts', type='string', default='',
                       help='Space-separated list of cohorts')
+        op.add_option('--cases', dest='cases', type='string', default='',
+                      help='Space-separated list of case cohorts')
+        op.add_option('--controls', dest='controls', type='string', default='',
+                      help='Space-separated list of control cohorts')
         op.add_option('--chrom', dest='chroms', type='string', default=None,
                       help='Chromosomes to include (space-separated; default is 1-22)')
         op.add_option('--snpfile', dest='snpfile', type='string', default=None,
@@ -102,31 +111,49 @@ class PCA(CommandLineApp):
 *** Main
 #+begin_src python
     def main(self):
-        if not (self.options.pca or self.options.snptest) or \
-                (self.options.pca and self.options.snptest):
-            raise Exception 'Use either --pca or --snptest'
+        self.sanity_check()
         if self.options.chroms:
             self.chroms = map(int, self.options.chroms.split())
         else:
             self.chroms = [c+1 for c in range(22)]
         self.snpfile = self.options.snpfile
-        self.say_hello()
 
         if self.options.pca:
+            self.analysis = 'PCA'
             self.cohorts = self.options.cohorts.split()
+            self.say_hello()
             self.create_data_set()
             self.pca()
         if self.options.snptest:
+            self.analysis = 'snptest'
             self.cases = self.options.cases.split()
             self.controls = self.options.controls.split()
             self.cohorts = self.cases + self.controls
+            self.say_hello()
             self.create_data_set()
             self.snptest()
 #+end_src
+***** Sanity check
+#+begin_src python 
+    def sanity_check(self):
+        if not (self.options.pca or self.options.snptest) or \
+                (self.options.pca and self.options.snptest):
+            raise Exception('Use either --pca or --snptest')
+        if self.options.pca:
+            if not self.options.cohorts:
+                raise Exception('Please choose cohorts using --cohorts')
+        if self.options.snptest:
+            if not self.options.cases:
+                raise Exception('Please choose case cohorts using --cases')
+            if not self.options.controls:
+                raise Exception('Please choose control cohorts using --controls')
+#+end_src
+
 ***** Say hello
 #+begin_src python
     def say_hello(self):
         print(time.ctime())
+        print('Analysis'.ljust(__width__) + '%s' % self.analysis)
         print('Cohorts'.ljust(__width__) + '%s' % self.cohorts)
         print('Chromosomes'.ljust(__width__) + '%s' % self.chroms)
         print('SNP file'.ljust(__width__) + '%s' % self.snpfile)
@@ -296,7 +323,7 @@ class PCA(CommandLineApp):
 #+end_src
 *** Snptest
 #+begin_src python
-    def pca(self):
+    def snptest(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Running shellfish on remote machine\n')
 
@@ -320,7 +347,7 @@ class PCA(CommandLineApp):
             remote_cmd = 'shellfish --snptest --sge --sge-level 2 --maxprocs 100'
             remote_cmd += ' --cases ' + case_files + ' --controls' + control_files
             remote_cmd += " --outfile %s/%s" % (remote_dir, outfile)
-            remote_cmd = "'nohup %s < /dev/null > %s/pca.log 2>&1 &'" % (remote_cmd, remote_dir)
+            remote_cmd = "'nohup %s < /dev/null > %s/log 2>&1 &'" % (remote_cmd, remote_dir)
 
             cmd = 'ssh %s %s' % (remote, remote_cmd)
             system(cmd)
@@ -347,7 +374,7 @@ class PCA(CommandLineApp):
             remote_cmd = "shellfish --pca --sge --sge-level 2 --numpcs 10 --maxprocs 500 "
             remote_cmd += "--file %s/%s --out %s/%s" % ((
                 remote_dir, excluded_genofile('all', self.snpfile)) * 2)
-            remote_cmd = "'nohup %s < /dev/null > %s/pca.log 2>&1 &'" % (remote_cmd, remote_dir)
+            remote_cmd = "'nohup %s < /dev/null > %s/log 2>&1 &'" % (remote_cmd, remote_dir)
 
             cmd = 'ssh %s %s' % (remote, remote_cmd)
             system(cmd)
@@ -394,7 +421,7 @@ def excluded_genofile(coh, snpfile):
 #+begin_src python
 def Popen(cmd, shell=False, stdout=None):
     print(' '.join(cmd) + (' > ' + stdout.name if stdout else ''))
-    if pca.options.dry_run:
+    if app.options.dry_run:
         return subprocess.Popen('', shell=True)
     else:
         return subprocess.Popen(cmd, shell=shell, stdout=stdout)
@@ -409,9 +436,9 @@ def system(cmd):
 *** Run from command line
 #+begin_src python
 if __name__ == '__main__':
-      pca = PCA()
-      # pca.options, main_args = pca.option_parser.parse_args()      
-      pca.run()
+      app = App()
+      # app.options, main_args = app.option_parser.parse_args()      
+      app.run()
 #+end_src
 * Org config							   :noexport:
 ;; Local Variables: **
