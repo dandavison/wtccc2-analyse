@@ -287,9 +287,8 @@ class App(CommandLineApp):
             system(cmd, verbose=True)
 
             # Exclude individuals from genotype data
-            cmd = '%s -v %s %s.xidx < %s.%s > %s.%s' % (
-                'columns' if format == 'geno' else 'slice',
-                '-f' if format == 'geno' else '--column-file',
+            cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
+                '-s' if format == 'gen' else '',
                 coh,
                 restricted_genofile(coh, self.snpfile), format,
                 excluded_genofile(coh, self.snpfile), format)
