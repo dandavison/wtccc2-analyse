@@ -412,9 +412,9 @@ def exclude_dir(coh):
 *** Excluded genofile
 #+begin_src python
 def excluded_genofile(coh, snpfile):
-    f = coh
+    f = coh + 'x'
     if snpfile:
-        f += 'x-' + os.path.basename(snpfile)
+        f += '-' + os.path.basename(snpfile)
     return f
 #+end_src
 
