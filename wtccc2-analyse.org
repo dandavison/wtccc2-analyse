@@ -176,6 +176,8 @@ class App(CommandLineApp):
         fnames = [coh + '.gen' for coh in self.cohorts]
         if not all(map(os.path.exists, fnames)):
             self.concatenate_chromosomes()
+            system('rm %s/*' % __insectdir__)
+            system('rmdir %s' % __insectdir__)
 
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Restricting to selected SNPs and converting to .geno\n')
@@ -234,7 +236,6 @@ class App(CommandLineApp):
                 Popen([cmd], shell=True, stdout=f).communicate()
             if not(os.path.exists(coh + '.sample')):
                 os.symlink(sample_file(coh), coh + '.sample')
-            system('rm %s/%s-*' % (__insectdir__, coh))
 #+end_src
 ***** Subset snps and convert to geno
       - In each cohort, create a .geno file at the requested SNPs
@@ -249,7 +250,6 @@ class App(CommandLineApp):
             print(cmd)
             system(cmd)
             system('rm %s.gen %s.map' % (coh,coh))
-            system('rmdir %s' % __insectdir__)
 #+end_src
 ***** Convert to gen
 #+begin_src python
