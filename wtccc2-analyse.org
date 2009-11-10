@@ -180,8 +180,9 @@ class App(CommandLineApp):
             system('rmdir %s' % __insectdir__)
 
         def files_exist(bnames):
-            geno = [b + '.geno' for b in bnames]
-            maps = [b + '.map' for b in bnames]
+            format = 'geno' if self.options.pca else 'gen'
+            geno = [b + '.' + format for b in bnames]
+            maps = [b + '.' + format for b in bnames] if self.options.pca else []
             return all(map(os.path.exists, flatten([geno, maps])))
 
         rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
@@ -198,6 +199,7 @@ class App(CommandLineApp):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Excluding individuals\n')
         if not files_exist(xfiles):
+            print('Missing files: %s' % ' '.join(files))
             self.exclude_individuals()
 
         if self.options.pca:
