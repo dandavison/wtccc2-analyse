@@ -204,7 +204,6 @@ class App(CommandLineApp):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Excluding individuals\n')
         if not files_exist(xfiles):
-            print('Missing files: %s' % ' '.join(files))
             self.exclude_individuals()
 
         if self.options.pca:
