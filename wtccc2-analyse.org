@@ -96,7 +96,11 @@ class App(CommandLineApp):
         op.add_option('--cases', dest='cases', type='string', default='',
                       help='Space-separated list of case cohorts')
         op.add_option('--controls', dest='controls', type='string', default='',
-                      help='Space-separated list of control cohorts')
+                      help='Space-separated list of control cohorts') 
+        op.add_option('--outfile', dest='outfile', type='string', default='results',
+                      help='Name of output file')
+        op.add_option('--local', dest='local', default=False, action='store_true',
+                      help='Run PCA / snptest locally, not on the cluster')
         op.add_option('--chrom', dest='chroms', type='string', default=None,
                       help='Chromosomes to include (space-separated; default is 1-22)')
         op.add_option('--snpfile', dest='snpfile', type='string', default=None,
@@ -326,35 +330,41 @@ class App(CommandLineApp):
 *** Snptest
 #+begin_src python
     def snptest(self):
+        case_files = [excluded_genofile(coh, self.snpfile) for coh in self.cases]
+        control_files = [excluded_genofile(coh, self.snpfile) for coh in self.controls]
+
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('Running shellfish on remote machine\n')
 
-        remote = 'login2-cluster1'
-        remote_dir = 'shellfish-%s' % datetimenow()
-        outfile = 'results.snptest'
+        if self.options.local:
+            print('Running shellfish on local machine\n')
+            cmd = 'shellfish --snptest --maxprocs 6'
+            cmd += ' --cases ' + ' '.join(case_files) + ' --controls ' + ' '.join(control_files)
+            cmd += " --outfile %s" % self.options.outfile
+            system(cmd, verbose=True)
 
-        if not os.path.exists(outfile):
-
-            case_files = [excluded_genofile(coh, self.snpfile) + '.gen' for coh in self.cases]
-            control_files = [excluded_genofile(coh, self.snpfile) + '.gen' for coh in self.controls]
-            case_files = ' '.join(case_files)
-            control_files = ' '.join(control_files)
-
+        else:
+            print('Running shellfish on remote machine\n')
+    
+            remote = 'login2-cluster1'
+            remote_dir = 'shellfish-%s' % datetimenow()
+    
+            case_files_string = ' '.join([f + '.gen' for f in case_files])
+            control_files_string = ' '.join([f + '.gen' for f in control_files])
+    
             cmd = "ssh %s 'mkdir -p %s'" % (remote, remote_dir)
-            system(cmd)
-
-            cmd = 'scp %s %s %s:%s/' % (case_files, control_files, remote, remote_dir)
-            system(cmd)
+            system(cmd, verbose=True)
+            
+            cmd = 'scp %s %s %s:%s/' % (case_files_string, control_files_string, remote, remote_dir)
+            system(cmd, verbose=True)
             
             remote_cmd = 'shellfish --snptest --sge --sge-level 2 --maxprocs 100'
-            remote_cmd += ' --cases ' + case_files + ' --controls ' + control_files
-            remote_cmd += " --outfile %s/%s" % (remote_dir, outfile)
+            remote_cmd += ' --cases ' + ' '.join(case_files) + ' --controls ' + ' '.join(control_files)
+            remote_cmd += " --outfile %s/%s" % (remote_dir, self.options.outfile)
             remote_cmd = "'nohup %s < /dev/null > %s/log 2>&1 &'" % (remote_cmd, remote_dir)
-
+            
             cmd = 'ssh %s %s' % (remote, remote_cmd)
-            system(cmd)
+            system(cmd, verbose=True)
 #+end_src
-
 *** PCA
 #+begin_src python
     def pca(self):
