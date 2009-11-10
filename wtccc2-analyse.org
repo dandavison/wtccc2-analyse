@@ -186,8 +186,9 @@ class App(CommandLineApp):
         def files_exist(bnames):
             format = 'geno' if self.options.pca else 'gen'
             geno = [b + '.' + format for b in bnames]
-            maps = [b + '.' + format for b in bnames] if self.options.pca else []
-            return all(map(os.path.exists, flatten([geno, maps])))
+            sample = [b + '.sample' for b in bnames]
+            maps = [b + '.map' for b in bnames] if self.options.pca else []
+            return all(map(os.path.exists, flatten([geno, sample, maps])))
 
         rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
         xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
@@ -310,6 +311,9 @@ class App(CommandLineApp):
                 system('mv %s.map %s.map' % (
                         restricted_genofile(coh, self.snpfile),
                         excluded_genofile(coh, self.snpfile)), verbose=True)
+            system('mv %s.sample %s.sample' % (
+                    restricted_genofile(coh, self.snpfile),
+                    excluded_genofile(coh, self.snpfile)), verbose=True)
 #+end_src
 ***** Combine data across cohorts
       - paste the cohort data files together side-by-side
