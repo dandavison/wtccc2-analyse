@@ -133,6 +133,7 @@ class App(CommandLineApp):
             self.chroms = [c+1 for c in range(22)]
         self.snpfile = self.options.snpfile
         self.samplefile = self.options.samplefile
+        self.platform = self.options.platform
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
 
         if self.options.pca:
@@ -251,7 +252,7 @@ class App(CommandLineApp):
             for i in range(len(self.cohorts)):
                 coh = self.cohorts[i]
                 with open(fnames[i], 'w') as f:
-                    Popen(['gunzip', '-vc', gen_gz_file(coh, chrom)], stdout=f).communicate()
+                    Popen(['gunzip', '-vc', gen_gz_file(coh, chrom, self.platform)], stdout=f).communicate()
                     
             cmd = ['insect', '-v', "-d ' '", '-f 2', '-o ' + outdir] + fnames
             # subprocess.Popen(cmd, shell=True).communicate()
@@ -268,7 +269,7 @@ class App(CommandLineApp):
                 cmd = 'cat %s/%s-*' % (__insectdir__, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
             if not(os.path.exists(coh + '.sample')):
-                os.symlink(sample_file(coh), coh + '.sample')
+                os.symlink(sample_file(coh, self.platform), coh + '.sample')
 #+end_src
 *** Subset snps and convert to geno
       - In each cohort, create a .geno file at the requested SNPs
@@ -295,20 +296,20 @@ class App(CommandLineApp):
             if self.samplefile is None or \
                     not os.path.exists(user_sample_file(self.samplefile, coh)):
                 cmd = 'cat %s/*.exclude.txt %s | sort | uniq > %s.xids' % \
-                    (exclude_dir(coh), self.options.excludefile or "", coh)
+                    (exclude_dir(coh, self.platform), self.options.excludefile or "", coh)
             else:
                 ## Get IDs to keep
                 tempfile = "/tmp/%s.ids" % coh
                 cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
                     (user_sample_file(self.samplefile, coh), tempfile)
                 cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
-                    (sample_file(coh), tempfile, coh)   
+                    (sample_file(coh, self.platform), tempfile, coh)   
             system(cmd, verbose=True)
 
             # Get cohort indices of individuals to be excluded
             # These are the (line index in sample file) - 2, because sample file has 2 header lines.
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
-                (sample_file(coh), coh, coh)
+                (sample_file(coh, self.platform), coh, coh)
             system(cmd, verbose=True)
 
             # Check for IDs that did not appear in cohort sample file
@@ -339,7 +340,7 @@ class App(CommandLineApp):
                 
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
-                (sample_file(coh), coh, excluded_genofile(coh, self.snpfile))
+                (sample_file(coh, self.platform), coh, excluded_genofile(coh, self.snpfile))
             system(cmd, verbose=True)
 
             system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format), verbose=True)
@@ -438,29 +439,28 @@ class App(CommandLineApp):
     def sstat(self):
         """Run sstat on each cohort file for each chromosome"""
         coh = self.cohorts[0]
-        nsample = count_lines(sample_file(coh)) - 2 
+        nsample = count_lines(sample_file(coh, self.platform)) - 2 
         nfac = count_lines(self.options.factor_file)
         if nsample != nfac:
             raise Exception('Number of individuals in sample file (%d) does not match number if factor file (%d)' % (
                     (nsample, nfac)))
         for chrom in self.chroms:
             system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
-                    gen_gz_file(coh, chrom), nsample, self.options.factor_file, coh, chrom), verbose=True)
+                    gen_gz_file(coh, chrom, self.platform), nsample, self.options.factor_file, coh, chrom), verbose=True)
 #+end_src
     
 * Utilities
 ** Genotype file
 #+begin_src python
-def gen_gz_file(coh, chrom):
-    return '%s/%s/illumina/calls/%s_%02d_illumina.gen.gz' % \
-        (__datadir__, coh, coh, chrom)
-
+def gen_gz_file(coh, chrom, platform):
+    return '%s/%s/%s/calls/%s_%02d_%s.gen.gz' % \
+        (__datadir__, coh, platform, coh, chrom, platform)
 #+end_src
 ** Sample file
 #+begin_src python
-def sample_file(coh):
-    return '%s/%s/illumina/calls/%s_illumina.sample' % \
-        (__datadir__, coh, coh)
+def sample_file(coh, platform):
+    return '%s/%s/%s/calls/%s_%s.sample' % \
+        (__datadir__, coh, platform, coh, platform)
 
 def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
@@ -476,8 +476,8 @@ def restricted_genofile(coh, snpfile):
 #+end_src
 ** Exclude dir
 #+begin_src python
-def exclude_dir(coh):
-    return '%s/%s/illumina/exclusions' % (__datadir__, coh)
+def exclude_dir(coh, platform):
+    return '%s/%s/%s/exclusions' % (__datadir__, platform, coh)
 #+end_src
     
 ** Excluded genofile
