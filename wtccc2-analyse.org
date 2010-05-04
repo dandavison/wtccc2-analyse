@@ -241,8 +241,8 @@ class App(CommandLineApp):
                 self.combine_cohorts()
 #+end_src
 *** Insect chromosome files
-      - For each chromosome, restrict cohorts to maximal common set of SNPs
-      - Remove per-chromosome uninsected files
+- For each chromosome, restrict cohorts to maximal common set of SNPs
+- Remove per-chromosome uninsected files
 #+begin_src python
     def insect_chromosome_files(self):
         outdir = __insectdir__
