@@ -83,7 +83,8 @@ class App(CommandLineApp):
         
         op = self.option_parser
         usage = []
-        usage.append('%s --snptest --controls 58C --cases NBS --chrom 21 22' % __progname__)
+        usage.append("%s --snptest --controls 58C --cases NBS --chrom '21 22' --local"
+                     % __progname__)
         usage.append('%s --cohorts "58C NBS POBI" --snpfile ~/wtccc2/celine-snps-ill'% __progname__)
         op.set_usage('\n' + '\n'.join(usage))
 
@@ -91,6 +92,8 @@ class App(CommandLineApp):
                       help='Perform PCA of selected cohorts')
         op.add_option('--snptest', dest='snptest', default=False, action='store_true',
                       help='Perform association tests of selected cases & controls')
+        op.add_option('--sstat', dest='sstat', default=False, action='store_true',
+                      help='Compute summary statistics for selected cohorts')
         op.add_option('--cohorts', dest='cohorts', type='string', default='',
                       help='Space-separated list of cohorts')
         op.add_option('--cases', dest='cases', type='string', default='',
@@ -107,6 +110,10 @@ class App(CommandLineApp):
                       help='File containing SNPs to use (.map format)')
         op.add_option('--samplefile', dest='samplefile', type='string', default=None,
                       help='sample file to use (chiamo .sample format; defaults to WTCCC2 cohort sample file)')
+        op.add_option('--snptest-opts', dest='snptest_opts', type='string', default='',
+                      help='Options to pass to snptest')
+        op.add_option('--factorfile', dest='factor_file', type='string', default=None,
+                      help='File containing integer factor classifying individuals (minimum factor level is 1)')
         op.add_option('--exclude', dest='excludefile', type='string', default=None,
                       help='File containing IDs of individuals to exclude' + \
                           'in addition to project exclusions (one ID per line)')
@@ -117,43 +124,57 @@ class App(CommandLineApp):
 *** Main
 #+begin_src python
     def main(self):
-        self.sanity_check()
         if self.options.chroms:
             self.chroms = map(int, self.options.chroms.split())
         else:
             self.chroms = [c+1 for c in range(22)]
         self.snpfile = self.options.snpfile
         self.samplefile = self.options.samplefile
+        self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
 
         if self.options.pca:
             self.analysis = 'PCA'
             self.cohorts = self.options.cohorts.split()
             self.say_hello()
+            self.sanity_check()
             self.create_data_set()
             self.pca()
-        if self.options.snptest:
+        elif self.options.snptest:
             self.analysis = 'snptest'
             self.cases = self.options.cases.split()
             self.controls = self.options.controls.split()
             self.cohorts = self.cases + self.controls
             self.say_hello()
+            self.sanity_check()
             self.create_data_set()
             self.snptest()
+        elif self.options.sstat:
+            self.analysis = 'sstat'
+            self.cohorts = self.options.cohorts.split()
+            self.sanity_check()
+            self.sstat()
 #+end_src
 ***** Sanity check
 #+begin_src python 
     def sanity_check(self):
-        if not (self.options.pca or self.options.snptest) or \
-                (self.options.pca and self.options.snptest):
-            raise Exception('Use either --pca or --snptest')
+        actions = ['pca','snptest','sstat']
+        requested_actions = [getattr(self.options, action) for action in actions]
+        if len(filter(None, requested_actions)) != 1:
+            raise Exception('Use either %s' % ' or '.join(actions))
         if self.options.pca:
             if not self.options.cohorts:
                 raise Exception('Please choose cohorts using --cohorts')
-        if self.options.snptest:
+        elif self.options.snptest:
             if not self.options.cases:
                 raise Exception('Please choose case cohorts using --cases')
             if not self.options.controls:
                 raise Exception('Please choose control cohorts using --controls')
+        elif self.options.sstat:
+            if not self.options.cohorts:
+                raise Exception('Please choose cohorts using --cohorts')
+            if len(self.cohorts) != 1:
+                print(self.cohorts)
+                raise Exception('Please select a single cohort with --sstat')
 #+end_src
 
 ***** Say hello
@@ -353,9 +374,10 @@ class App(CommandLineApp):
 
         if self.options.local:
             print('Running shellfish on local machine\n')
-            cmd = 'shellfish --snptest --maxprocs 6'
+            cmd = 'shellfish --snptest --maxprocs 1'
             cmd += ' --cases ' + ' '.join(case_files) + ' --controls ' + ' '.join(control_files)
-            cmd += " --outfile %s" % self.options.outfile
+            cmd += ' --outfile %s' % self.options.outfile
+            cmd += ' --snptest-chunk 1000 --snptest-opts %s' % self.options.snptest_opts
             system(cmd, verbose=True)
 
         else:
@@ -375,7 +397,8 @@ class App(CommandLineApp):
             
             remote_cmd = 'shellfish --snptest --sge --sge-level 2 --maxprocs 100'
             remote_cmd += ' --cases ' + ' '.join(case_files) + ' --controls ' + ' '.join(control_files)
-            remote_cmd += " --outfile %s/%s" % (remote_dir, self.options.outfile)
+            remote_cmd += ' --outfile %s/%s' % (remote_dir, self.options.outfile)
+            remote_cmd += ' --snptest-chunk 1000 --snptest-opts %s' % self.options.snptest_opts
             remote_cmd = "'nohup %s < /dev/null > %s/log 2>&1 &'" % (remote_cmd, remote_dir)
             
             cmd = 'ssh %s %s' % (remote, remote_cmd)
@@ -407,6 +430,21 @@ class App(CommandLineApp):
             cmd = 'ssh %s %s' % (remote, remote_cmd)
             system(cmd)
 #+end_src
+** sstat
+#+begin_src python 
+    def sstat(self):
+        """Run sstat on each cohort file for each chromosome"""
+        coh = self.cohorts[0]
+        nsample = count_lines(sample_file(coh)) - 2 
+        nfac = count_lines(self.options.factor_file)
+        if nsample != nfac:
+            raise Exception('Number of individuals in sample file (%d) does not match number if factor file (%d)' % (
+                    (nsample, nfac)))
+        for chrom in self.chroms:
+            system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
+                    gen_gz_file(coh, chrom), nsample, self.options.factor_file, coh, chrom), verbose=True)
+#+end_src
+    
 * Utilities
 *** Genotype file
 #+begin_src python
