@@ -1,13 +1,4 @@
-#+title:      A program for analysis of WTCCC2 data
-#+OPTIONS:    H:3 num:t toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t TeX:t LaTeX:t skip:nil d:(HIDE) tags:not-in-toc
-#+OPTIONS:    author:nil creator:nil timestamp:nil
-#+STARTUP:    align fold nodlcheck hidestars odd lognotestate hideblocks
-#+AUTHOR:     Dan Davison
-#+EMAIL:      davison@stats.ox.ac.uk
-#+LANGUAGE:   en
-#+property:   tangle yes
-#+INFOJS_OPT: view:content toc:nil
-
+#+title:A program for analysis of WTCCC2 data
 * License							   :noexport:
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -25,14 +16,23 @@
 #    ---------------------------------------------------------------------
 
 * Description
-  This program performs PCA of a data set of SNP genotypes defined by
-  the following specifications:
+  This program is an interface to [[http://www.stats.ox.ac.uk/~davison/software/shellfish/shellfish.php][shellfish]] to perform PCA and
+  association tests of WTCCC2 data. For the association tests,
+  [[http://www.stats.ox.ac.uk/~davison/software/shellfish/shellfish.php][shellfish]] uses Jonathan Marchini's software [[http://www.stats.ox.ac.uk/~marchini/software/gwas/snptest.html][snptest]]. 
+
+  This HTML file is for viewing only. Download the python code from [[file:wtccc2-analyse.py][here]]
+  and save it in the [[file:shellfish.org][shellfish]] download directory (you need to have
+  [[file:shellfish.org][shellfish]] installed).
+
+  Use =wtccc2-analyse= with no arguments to see example usage. Use
+  =wtccc2-analyse --help= to see full argument list.
+
+** Example PCA usage:
+    For PCA, the data set is defined by the following specifications:
   - The WTCCC2 cohorts to be included
   - The chromosomes to be included
   - The SNPs to be included
-
-Example usage:
-#+srcname: example usage
+ 
 #+begin_src sh :tangle no
 ./wtccc2-analyse.py --cohorts '58C NBS POBI' --snpfile ~/wtccc2/celine-snps-ill
 #+end_src
@@ -43,19 +43,22 @@ individuals specified in the cohort exclusions directory, puts the data
 together and runs the analysis on the cluster leaving output files on
 the cluster. Additional arguments are 
 
-#+srcname: arguments
+** Example Snptest usage
+
+#+begin_src sh :tangle no 
+wtccc2-analyse --snptest --controls 58C --cases NBS --chrom '21 22'
+#+end_src
+    
+Snptest does not currently offer the option to analyse a subset of the SNPs.
+
+** Additional arguments
 #+begin_src org
---chrom   :: specify chromosomes (defauklts to all autosomes)
+--chrom   :: specify chromosomes (defaults to all autosomes)
 --exclude :: specify a file containing additional exclusions (individuals from any cohorts)
 #+end_src
 
-
-This HTML file is for viewing only. Download the python code from
-[[file:wtccc2-pca.py][here]], and save it in the [[file:shellfish.org][shellfish]] download directory (you need to
-have [[file:shellfish.org][shellfish]] installed).
-
 * Header
-*** Imports
+** Imports
 #+begin_src python
 import sys, os, time
 from cmdline.cmdline import CommandLineApp
@@ -63,7 +66,7 @@ import subprocess
 from subprocess import PIPE
 from dedpy.ded import *
 #+end_src
-*** Globals
+** Globals
 #+begin_src python
 __width__ = 30
 __home__ = subprocess.Popen('echo $HOME', shell=True, stdout=PIPE).communicate()[0].strip()
@@ -76,7 +79,7 @@ __progname__ = 'wtccc2-analyse'
 #+begin_src python
 class App(CommandLineApp):
 #+end_src
-*** Init
+** Init
 #+begin_src python
     def __init__(self):
         CommandLineApp.__init__(self)
@@ -121,7 +124,7 @@ class App(CommandLineApp):
                       help="Don't actually do anything, just print commands")
         op.add_option('--platform', dest='platform', type='string', default='illumina')
 #+end_src
-*** Main
+** Main
 #+begin_src python
     def main(self):
         if self.options.chroms:
@@ -154,7 +157,7 @@ class App(CommandLineApp):
             self.sanity_check()
             self.sstat()
 #+end_src
-***** Sanity check
+*** Sanity check
 #+begin_src python 
     def sanity_check(self):
         actions = ['pca','snptest','sstat']
@@ -177,7 +180,7 @@ class App(CommandLineApp):
                 raise Exception('Please select a single cohort with --sstat')
 #+end_src
 
-***** Say hello
+*** Say hello
 #+begin_src python
     def say_hello(self):
         print(time.ctime())
@@ -188,7 +191,7 @@ class App(CommandLineApp):
         if self.options.dry_run:
             print('Dry run')
 #+end_src
-*** Create data set
+** Create data set
 #+begin_src python
     def create_data_set(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -236,7 +239,7 @@ class App(CommandLineApp):
             if not files_exist([excluded_genofile('all', self.snpfile)]):
                 self.combine_cohorts()
 #+end_src
-***** Insect chromosome files
+*** Insect chromosome files
       - For each chromosome, restrict cohorts to maximal common set of SNPs
       - Remove per-chromosome uninsected files
 #+begin_src python
@@ -255,7 +258,7 @@ class App(CommandLineApp):
             system(' '.join(cmd))
             map(os.remove, fnames)     
 #+end_src
-***** Concat chromosomes
+*** Concat chromosomes
       - In each cohort, concatenate across chromosomes
       - Remove per-chromosome cohort files
 #+begin_src python 
@@ -267,7 +270,7 @@ class App(CommandLineApp):
             if not(os.path.exists(coh + '.sample')):
                 os.symlink(sample_file(coh), coh + '.sample')
 #+end_src
-***** Subset snps and convert to geno
+*** Subset snps and convert to geno
       - In each cohort, create a .geno file at the requested SNPs
       - Remove genome-wide cohort files
 #+begin_src python
@@ -281,7 +284,7 @@ class App(CommandLineApp):
             system(cmd)
             system('rm %s.gen %s.map' % (coh,coh))
 #+end_src
-***** Make individual exclusions
+*** Make individual exclusions
       - In each cohort, make the project exclusions
       - Create .geno and .map files for excluded data sets
 #+begin_src python
@@ -348,7 +351,7 @@ class App(CommandLineApp):
                     restricted_genofile(coh, self.snpfile),
                     excluded_genofile(coh, self.snpfile)), verbose=True)
 #+end_src
-***** Combine data across cohorts
+*** Combine data across cohorts
       - paste the cohort data files together side-by-side
       - create single pair of {.geno, .map} files
 #+begin_src python
@@ -363,8 +366,8 @@ class App(CommandLineApp):
                 map_files[0], excluded_genofile('all', self.snpfile)))
         system('rm %s' % ' '.join(geno_files))
         map(os.remove, map_files)
-#+end_src
-*** Snptest
+#+end_src 
+** Snptest
 #+begin_src python
     def snptest(self):
         case_files = [excluded_genofile(coh, self.snpfile) for coh in self.cases]
@@ -404,7 +407,7 @@ class App(CommandLineApp):
             cmd = 'ssh %s %s' % (remote, remote_cmd)
             system(cmd, verbose=True)
 #+end_src
-*** PCA
+** PCA
 #+begin_src python
     def pca(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -446,14 +449,14 @@ class App(CommandLineApp):
 #+end_src
     
 * Utilities
-*** Genotype file
+** Genotype file
 #+begin_src python
 def gen_gz_file(coh, chrom):
     return '%s/%s/illumina/calls/%s_%02d_illumina.gen.gz' % \
         (__datadir__, coh, coh, chrom)
 
 #+end_src
-*** Sample file
+** Sample file
 #+begin_src python
 def sample_file(coh):
     return '%s/%s/illumina/calls/%s_illumina.sample' % \
@@ -463,7 +466,7 @@ def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
 #+end_src
 	     
-*** Restricted genofile
+** Restricted genofile
 #+begin_src python
 def restricted_genofile(coh, snpfile):
     f = coh
@@ -471,13 +474,13 @@ def restricted_genofile(coh, snpfile):
         f += '-' + os.path.basename(snpfile)
     return f
 #+end_src
-*** Exclude dir
+** Exclude dir
 #+begin_src python
 def exclude_dir(coh):
     return '%s/%s/illumina/exclusions' % (__datadir__, coh)
 #+end_src
     
-*** Excluded genofile
+** Excluded genofile
 #+begin_src python
 def excluded_genofile(coh, snpfile):
     f = coh + 'x'
@@ -486,7 +489,7 @@ def excluded_genofile(coh, snpfile):
     return f
 #+end_src
 
-*** Popen
+** Popen
 #+begin_src python
 def Popen(cmd, shell=False, stdout=None):
     print(' '.join(cmd) + (' > ' + stdout.name if stdout else ''))
@@ -496,7 +499,7 @@ def Popen(cmd, shell=False, stdout=None):
         return subprocess.Popen(cmd, shell=shell, stdout=stdout)
 #+end_src
 
-*** Run from command line
+** Run from command line
 #+begin_src python
 if __name__ == '__main__':
       app = App()
@@ -504,6 +507,14 @@ if __name__ == '__main__':
       app.run()
 #+end_src
 * Org config							   :noexport:
+#+OPTIONS:    H:3 num:t toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t TeX:t LaTeX:t skip:nil d:(HIDE) tags:not-in-toc
+#+OPTIONS:    author:nil creator:nil timestamp:nil
+#+STARTUP:    align fold nodlcheck hidestars lognotestate hideblocks
+#+AUTHOR:     Dan Davison
+#+EMAIL:      davison@stats.ox.ac.uk
+#+LANGUAGE:   en
+#+property:   tangle yes
+#+INFOJS_OPT: view:content toc:nil
 ;; Local Variables: **
 ;; org-src-preserve-indentation: t **
 ;; End: **
