@@ -105,6 +105,8 @@ class App(CommandLineApp):
                       help='Chromosomes to include (space-separated; default is 1-22)')
         op.add_option('--snpfile', dest='snpfile', type='string', default=None,
                       help='File containing SNPs to use (.map format)')
+        op.add_option('--samplefile', dest='samplefile', type='string', default=None,
+                      help='sample file to use (chiamo .sample format; defaults to WTCCC2 cohort sample file)')
         op.add_option('--exclude', dest='excludefile', type='string', default=None,
                       help='File containing IDs of individuals to exclude' + \
                           'in addition to project exclusions (one ID per line)')
@@ -121,6 +123,7 @@ class App(CommandLineApp):
         else:
             self.chroms = [c+1 for c in range(22)]
         self.snpfile = self.options.snpfile
+        self.samplefile = self.options.samplefile
 
         if self.options.pca:
             self.analysis = 'PCA'
@@ -265,8 +268,17 @@ class App(CommandLineApp):
         for coh in self.cohorts:
             
             # Make sorted list of IDs to be excluded
-            cmd = 'cat %s/*.exclude.txt %s | sort | uniq > %s.xids' % \
-                (exclude_dir(coh), self.options.excludefile or "", coh)
+            if self.samplefile is None or \
+                    not os.path.exists(user_sample_file(self.samplefile, coh)):
+                cmd = 'cat %s/*.exclude.txt %s | sort | uniq > %s.xids' % \
+                    (exclude_dir(coh), self.options.excludefile or "", coh)
+            else:
+                ## Get IDs to keep
+                tempfile = "/tmp/%s.ids" % coh
+                cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
+                    (user_sample_file(self.samplefile, coh), tempfile)
+                cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
+                    (sample_file(coh), tempfile, coh)   
             system(cmd, verbose=True)
 
             # Get cohort indices of individuals to be excluded
@@ -274,6 +286,15 @@ class App(CommandLineApp):
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
                 (sample_file(coh), coh, coh)
             system(cmd, verbose=True)
+
+            # Check for IDs that did not appear in cohort sample file
+            cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
+                (coh, coh)
+            system(cmd)
+            cmd = 'grep -vF NA %s.xidx | sort -n > tmp && mv tmp %s.xidx' % \
+                (coh, coh)
+            system(cmd, verbose=True)
+
             if self.options.pca:
                 format = 'geno'
             else:
@@ -283,14 +304,6 @@ class App(CommandLineApp):
                 firstofthree = [6 + (i-1)*3 for i in idx]
                 idx = flatten([range(s, s+3) for s in firstofthree])
                 write_lines(idx, '%s.xidx' % coh)
-
-            # Check for IDs that did not appear in cohort sample file
-            cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
-                (coh, coh)
-            system(cmd)
-            cmd = 'grep -vF NA %s.xidx | sort -n > tmp && mv tmp %s.xidx' % \
-                (coh, coh)
-            system(cmd, verbose=True)
 
             # Exclude individuals from genotype data
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
@@ -407,6 +420,9 @@ def gen_gz_file(coh, chrom):
 def sample_file(coh):
     return '%s/%s/illumina/calls/%s_illumina.sample' % \
         (__datadir__, coh, coh)
+
+def user_sample_file(basename, coh):
+    return '%s.%s' % (basename, coh)
 #+end_src
 	     
 *** Restricted genofile
