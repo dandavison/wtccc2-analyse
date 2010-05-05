@@ -283,6 +283,7 @@ class App(CommandLineApp):
                  restricted_genofile(coh, self.snpfile) )
             print(cmd)
             system(cmd)
+ 	    system('mv %s.sample %s.sample' % (coh, restricted_genofile(coh, self.snpfile)))
             system('rm %s.gen %s.map' % (coh,coh))
 #+end_src
 *** Make individual exclusions
