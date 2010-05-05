@@ -508,9 +508,9 @@ if __name__ == '__main__':
 #+end_src
 ** Make read-only
 #+begin_src python
-;; Local Variables: **
-;; buffer-read-only: t **
-;; End: **
+# Local Variables: **
+# buffer-read-only: t **
+# End: **
 #+end_src
 * Org config							   :noexport:
 #+OPTIONS:    H:3 num:t toc:nil \n:nil @:t ::t |:t ^:{} -:t f:t *:t TeX:t LaTeX:t skip:nil d:(HIDE) tags:not-in-toc
