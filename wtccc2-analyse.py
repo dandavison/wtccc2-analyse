@@ -313,10 +313,9 @@ class App(CommandLineApp):
 
     def pca(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('Running shellfish on remote machine\n')
-
         remote = 'login2-cluster1'
         remote_dir = 'shellfish-%s' % datetimenow()
+        print('Running shellfish on %s in %s\n' % (remote, remote_dir))
 
         if not os.path.exists(excluded_genofile('all', self.snpfile) + '.evecs'):
 
