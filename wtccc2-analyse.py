@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Imports][block-3]]
-
 import sys, os, time
 from cmdline.cmdline import CommandLineApp
 import subprocess
 from subprocess import PIPE
 from dedpy.ded import *
-# block-3 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Globals][block-4]]
 
 __width__ = 30
 __home__ = subprocess.Popen('echo $HOME', shell=True, stdout=PIPE).communicate()[0].strip()
@@ -17,15 +12,8 @@ __datadir__ = '/data/oak/project/wtccc2'
 __dry_run__ = False
 __insectdir__ = 'insect_out'
 __progname__ = 'wtccc2-analyse'
-# block-4 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Main%20class][block-5]]
 
 class App(CommandLineApp):
-# block-5 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Init][block-6]]
-
     def __init__(self):
         CommandLineApp.__init__(self)
         
@@ -68,9 +56,6 @@ class App(CommandLineApp):
         op.add_option('-n', dest='dry_run', default=False, action='store_true',
                       help="Don't actually do anything, just print commands")
         op.add_option('--platform', dest='platform', type='string', default='illumina')
-# block-6 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Main][block-7]]
 
     def main(self):
         if self.options.chroms:
@@ -103,9 +88,6 @@ class App(CommandLineApp):
             self.cohorts = self.options.cohorts.split()
             self.sanity_check()
             self.sstat()
-# block-7 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Sanity%20check][block-8]]
 
     def sanity_check(self):
         actions = ['pca','snptest','sstat']
@@ -126,9 +108,6 @@ class App(CommandLineApp):
             if len(self.cohorts) != 1:
                 print(self.cohorts)
                 raise Exception('Please select a single cohort with --sstat')
-# block-8 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Say%20hello][block-9]]
 
     def say_hello(self):
         print(time.ctime())
@@ -138,9 +117,6 @@ class App(CommandLineApp):
         print('SNP file'.ljust(__width__) + '%s' % self.snpfile)
         if self.options.dry_run:
             print('Dry run')
-# block-9 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Create%20data%20set][block-10]]
 
     def create_data_set(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -187,9 +163,6 @@ class App(CommandLineApp):
             print('Combining data across cohorts\n')
             if not files_exist([excluded_genofile('all', self.snpfile)]):
                 self.combine_cohorts()
-# block-10 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Insect%20chromosome%20files][block-11]]
 
     def insect_chromosome_files(self):
         outdir = __insectdir__
@@ -205,9 +178,6 @@ class App(CommandLineApp):
             # subprocess.Popen(cmd, shell=True).communicate()
             system(' '.join(cmd))
             map(os.remove, fnames)
-# block-11 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Concat%20chromosomes][block-12]]
 
     def concatenate_chromosomes(self):
         for coh in self.cohorts:
@@ -216,9 +186,6 @@ class App(CommandLineApp):
                 Popen([cmd], shell=True, stdout=f).communicate()
             if not(os.path.exists(coh + '.sample')):
                 os.symlink(sample_file(coh, self.platform), coh + '.sample')
-# block-12 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Subset%20snps%20and%20convert%20to%20geno][block-13]]
 
     def subset_snps_and_convert_to_geno(self):
         for coh in self.cohorts:
@@ -230,9 +197,6 @@ class App(CommandLineApp):
             system(cmd)
             system('mv %s.sample %s.sample' % (coh, restricted_genofile(coh, self.snpfile)))
             system('rm %s.gen %s.map' % (coh,coh))
-# block-13 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Make%20individual%20exclusions][block-14]]
 
     def exclude_individuals(self):
         for coh in self.cohorts:
@@ -296,9 +260,6 @@ class App(CommandLineApp):
             system('mv %s.sample %s.sample' % (
                     restricted_genofile(coh, self.snpfile),
                     excluded_genofile(coh, self.snpfile)), verbose=True)
-# block-14 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Combine%20data%20across%20cohorts][block-15]]
 
     def combine_cohorts(self):
         geno_files = [excluded_genofile(coh, self.snpfile) + '.geno' for coh in self.cohorts]
@@ -311,9 +272,6 @@ class App(CommandLineApp):
                 map_files[0], excluded_genofile('all', self.snpfile)))
         system('rm %s' % ' '.join(geno_files))
         map(os.remove, map_files)
-# block-15 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Snptest][block-16]]
 
     def snptest(self):
         case_files = [excluded_genofile(coh, self.snpfile) for coh in self.cases]
@@ -352,9 +310,6 @@ class App(CommandLineApp):
             
             cmd = 'ssh %s %s' % (remote, remote_cmd)
             system(cmd, verbose=True)
-# block-16 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*PCA][block-17]]
 
     def pca(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -378,9 +333,6 @@ class App(CommandLineApp):
 
             cmd = 'ssh %s %s' % (remote, remote_cmd)
             system(cmd)
-# block-17 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*sstat][block-18]]
 
     def sstat(self):
         """Run sstat on each cohort file for each chromosome"""
@@ -393,16 +345,10 @@ class App(CommandLineApp):
         for chrom in self.chroms:
             system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
                     gen_gz_file(coh, chrom, self.platform), nsample, self.options.factor_file, coh, chrom), verbose=True)
-# block-18 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Genotype%20file][block-19]]
 
 def gen_gz_file(coh, chrom, platform):
     return '%s/%s/%s/calls/%s_%02d_%s.gen.gz' % \
         (__datadir__, coh, platform, coh, chrom, platform)
-# block-19 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Sample%20file][block-20]]
 
 def sample_file(coh, platform):
     return '%s/%s/%s/calls/%s_%s.sample' % \
@@ -410,33 +356,21 @@ def sample_file(coh, platform):
 
 def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
-# block-20 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Restricted%20genofile][block-21]]
 
 def restricted_genofile(coh, snpfile):
     f = coh
     if snpfile:
         f += '-' + os.path.basename(snpfile)
     return f
-# block-21 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Exclude%20dir][block-22]]
 
 def exclude_dir(coh, platform):
     return '%s/%s/%s/exclusions' % (__datadir__, platform, coh)
-# block-22 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Excluded%20genofile][block-23]]
 
 def excluded_genofile(coh, snpfile):
     f = coh + 'x'
     if snpfile:
         f += '-' + os.path.basename(snpfile)
     return f
-# block-23 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Popen][block-24]]
 
 def Popen(cmd, shell=False, stdout=None):
     print(' '.join(cmd) + (' > ' + stdout.name if stdout else ''))
@@ -444,19 +378,8 @@ def Popen(cmd, shell=False, stdout=None):
         return subprocess.Popen('', shell=True)
     else:
         return subprocess.Popen(cmd, shell=shell, stdout=stdout)
-# block-24 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Run%20from%20command%20line][block-25]]
 
 if __name__ == '__main__':
       app = App()
       # app.options, main_args = app.option_parser.parse_args()      
       app.run()
-# block-25 ends here
-
-# [[file:~/src/wtccc2/wtccc2-analyse/wtccc2-analyse.org::*Make%20read%20only][block-26]]
-
-# Local Variables: **
-# buffer-read-only: t **
-# End: **
-# block-26 ends here
