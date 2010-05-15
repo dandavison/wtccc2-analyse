@@ -174,7 +174,7 @@ class App(CommandLineApp):
                 with open(fnames[i], 'w') as f:
                     Popen(['gunzip', '-vc', gen_gz_file(coh, chrom, self.platform)], stdout=f).communicate()
                     
-            cmd = ['insect', '-v', "-d ' '", '-f 2', '-o ' + outdir] + fnames
+            cmd = ['insect', '-v', '--unique', "-d ' '", '-f 2', '-o ' + outdir] + fnames
             # subprocess.Popen(cmd, shell=True).communicate()
             system(' '.join(cmd))
             map(os.remove, fnames)
