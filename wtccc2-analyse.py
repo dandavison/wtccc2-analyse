@@ -363,7 +363,7 @@ def restricted_genofile(coh, snpfile):
     return f
 
 def exclude_dir(coh, platform):
-    return '%s/%s/%s/exclusions' % (__datadir__, platform, coh)
+    return '%s/%s/%s/exclusions' % (__datadir__, coh, platform)
 
 def excluded_genofile(coh, snpfile):
     f = coh + 'x'
