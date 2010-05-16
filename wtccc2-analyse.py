@@ -55,7 +55,7 @@ class App(CommandLineApp):
                           'in addition to project exclusions (one ID per line)')
         op.add_option('-n', dest='dry_run', default=False, action='store_true',
                       help="Don't actually do anything, just print commands")
-        op.add_option('--platform', dest='platform', type='string', default='illumina')
+        op.add_option('--platform', dest='platform', type='string', default=None)
 
     def main(self):
         if self.options.chroms:
@@ -108,6 +108,8 @@ class App(CommandLineApp):
             if len(self.cohorts) != 1:
                 print(self.cohorts)
                 raise Exception('Please select a single cohort with --sstat')
+        if self.platform not in ['illumina','affymetrix']:
+            raise Exception('Select platform using --platform illumina or --platform affymetrix')
 
     def say_hello(self):
         print(time.ctime())
