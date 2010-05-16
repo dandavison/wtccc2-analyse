@@ -96,18 +96,18 @@ class App(CommandLineApp):
             raise Exception('Use either %s' % ' or '.join(actions))
         if self.options.pca:
             if not self.options.cohorts:
-                raise Exception('Please choose cohorts using --cohorts')
+                raise Exception('Select cohorts using --cohorts')
         elif self.options.snptest:
             if not self.options.cases:
-                raise Exception('Please choose case cohorts using --cases')
+                raise Exception('Select case cohorts using --cases')
             if not self.options.controls:
-                raise Exception('Please choose control cohorts using --controls')
+                raise Exception('Select control cohorts using --controls')
         elif self.options.sstat:
             if not self.options.cohorts:
-                raise Exception('Please choose cohorts using --cohorts')
+                raise Exception('Select cohorts using --cohorts')
             if len(self.cohorts) != 1:
                 print(self.cohorts)
-                raise Exception('Please select a single cohort with --sstat')
+                raise Exception('Select a single cohort with --sstat')
         if self.platform not in ['illumina','affymetrix']:
             raise Exception('Select platform using --platform illumina or --platform affymetrix')
 
