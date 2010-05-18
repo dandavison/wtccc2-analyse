@@ -206,8 +206,10 @@ class App(CommandLineApp):
             # Make sorted list of IDs to be excluded
             if self.samplefile is None or \
                     not os.path.exists(user_sample_file(self.samplefile, coh)):
-                cmd = 'cat %s/*.exclude.txt %s | sort | uniq > %s.xids' % \
-                    (exclude_dir(coh, self.platform), self.options.excludefile or "", coh)
+                project_excludeglob =  exclude_dir(coh, self.platform) + '/*.exclude.txt'
+                ## TODO: test for non-empty glob expansion
+                cmd = 'cat %s %s | sort | uniq > %s.xids' % \
+                    (project_excludeglob, self.options.excludefile or "", coh)
             else:
                 ## Get IDs to keep
                 tempfile = "/tmp/%s.ids" % coh
