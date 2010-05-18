@@ -337,8 +337,8 @@ class App(CommandLineApp):
             cmd = "ssh %s 'mkdir -p %s'" % (remote, remote_dir)
             system(cmd)
             
-            tup = ((excluded_genofile('all', self.snpfile),) * 2) + (remote, remote_dir)
-            cmd = 'scp %s.geno %s.map %s:%s/' % tup
+            tup = ((excluded_genofile('all', self.snpfile),) * 3) + (remote, remote_dir)
+            cmd = 'scp %s.geno %s.map %s.ids %s:%s/' % tup
             system(cmd)
             
             remote_cmd = "shellfish --pca --sge --sge-level 2 --numpcs 10 --maxprocs 500 "
