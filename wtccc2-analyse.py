@@ -266,14 +266,25 @@ class App(CommandLineApp):
     def combine_cohorts(self):
         geno_files = [excluded_genofile(coh, self.snpfile) + '.geno' for coh in self.cohorts]
         map_files = [excluded_genofile(coh, self.snpfile) + '.map' for coh in self.cohorts]
-        cmd = "paste -d '\\0' %s > %s" % (
-            ' '.join(geno_files),
-            excluded_genofile('all', self.snpfile) + '.geno')
-        system(cmd)
-        system('cp %s %s.map' % (
-                map_files[0], excluded_genofile('all', self.snpfile)))
-        system('rm %s' % ' '.join(geno_files))
+        id_files = [excluded_genofile(coh, self.snpfile) + '.ids' for coh in self.cohorts]
+        combined_basename = excluded_genofile('all', self.snpfile)
+
+        ## Combine genotype data across cohorts
+        cmd = "paste -d '\\0' %s > %s.geno" % (' '.join(geno_files), combined_basename)
+        system(cmd, verbose=True)
+
+        ## Combine .ids files
+        cmd = 'cat %s > %s.ids' % (' '.join(id_files), combined_basename)
+        system(cmd, verbose=True)
+        
+        ## Propagate .map file
+        cmd = 'cp %s %s.map' % (map_files[0], combined_basename)
+        system(cmd, verbose=True)
+
+        ## Clean up
+        map(os.remove, geno_files)
         map(os.remove, map_files)
+        map(os.remove, id_files)
 
     def snptest(self):
         case_files = [excluded_genofile(coh, self.snpfile) for coh in self.cases]
