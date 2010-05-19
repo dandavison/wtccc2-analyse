@@ -343,9 +343,9 @@ class App(CommandLineApp):
             
             remote_cmd = "shellfish --pca --sge --sge-level 2 --numpcs 10 --maxprocs 500 "
             remote_cmd += "--file %s --out %s" % ((excluded_genofile('all', self.snpfile),) * 2)
-            remote_cmd = "'cd %s && nohup %s < /dev/null > log 2>&1 &'" % (remote_dir, remote_cmd)
+            remote_cmd = "'cd %s && nohup %s < /dev/null > log 2>&1'" % (remote_dir, remote_cmd)
 
-            cmd = 'ssh %s %s' % (remote, remote_cmd)
+            cmd = 'ssh %s %s &' % (remote, remote_cmd)
             system(cmd)
 
     def sstat(self):
