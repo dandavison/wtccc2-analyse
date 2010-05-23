@@ -26,6 +26,8 @@ class App(CommandLineApp):
 
         op.add_option('--pca', dest='pca', default=False, action='store_true',
                       help='Perform PCA of selected cohorts')
+        op.add_option('', '--make-gen', dest='make_gen', default=False, action='store_true',
+                      help="Convert to .gen input data format used by chiamo and related software")
         op.add_option('--snptest', dest='snptest', default=False, action='store_true',
                       help='Perform association tests of selected cases & controls')
         op.add_option('--sstat', dest='sstat', default=False, action='store_true',
@@ -67,13 +69,14 @@ class App(CommandLineApp):
         self.platform = self.options.platform
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
 
-        if self.options.pca:
+        if self.options.pca or self.options.make_gen:
             self.analysis = 'PCA'
             self.cohorts = self.options.cohorts.split()
             self.say_hello()
             self.sanity_check()
             self.create_data_set()
-            self.pca()
+            if self.options.pca:
+                self.pca()
         elif self.options.snptest:
             self.analysis = 'snptest'
             self.cases = self.options.cases.split()
@@ -90,7 +93,7 @@ class App(CommandLineApp):
             self.sstat()
 
     def sanity_check(self):
-        actions = ['pca','snptest','sstat']
+        actions = ['pca','snptest','sstat', 'make_gen']
         requested_actions = [getattr(self.options, action) for action in actions]
         if len(filter(None, requested_actions)) != 1:
             raise Exception('Use either %s' % ' or '.join(actions))
@@ -149,9 +152,9 @@ class App(CommandLineApp):
 
         if self.options.pca:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            print('Restricting to selected SNPs and converting to .geno\n')
+            print('Restricting to selected SNPs\n')
             if not (files_exist(rfiles) or files_exist(xfiles)):
-                self.subset_snps_and_convert_to_geno()
+                self.restrict_to_selected_SNPs()
             rmapfiles = [rfile + '.map' for rfile in rfiles]
             assert_files_identical(rmapfiles)
 
@@ -189,10 +192,11 @@ class App(CommandLineApp):
             if not(os.path.exists(coh + '.sample')):
                 os.symlink(sample_file(coh, self.platform), coh + '.sample')
 
-    def subset_snps_and_convert_to_geno(self):
+    def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
-            cmd = 'shellfish --make-geno --file %s %s --out %s' % \
-                (coh,
+            cmd = 'shellfish --make-%s --file %s %s --out %s' % \
+                ('geno' if self.options.pca else 'gen',
+                 coh,
                  '--file2 %s' % self.snpfile if self.snpfile else '',
                  restricted_genofile(coh, self.snpfile) )
             print(cmd)
