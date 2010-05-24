@@ -200,10 +200,9 @@ class App(CommandLineApp):
                  coh,
                  '--file2 %s' % self.snpfile if self.snpfile else '',
                  restricted_genofile(coh, self.snpfile) )
-            print(cmd)
-            system(cmd)
+            system(cmd, verbose=True)
             system('mv %s.sample %s.sample' % (coh, restricted_genofile(coh, self.snpfile)))
-            system('rm %s.gen %s.map' % (coh,coh))
+            system('rm %s.gen' % coh)
 
     def exclude_individuals(self):
         for coh in self.cohorts:
