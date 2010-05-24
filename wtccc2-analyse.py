@@ -68,6 +68,7 @@ class App(CommandLineApp):
         self.samplefile = self.options.samplefile
         self.platform = self.options.platform
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
+        self.options.combine_cohorts = self.options.pca or self.options.make_gen
 
         if self.options.pca or self.options.make_gen:
             self.analysis = 'PCA'
@@ -150,20 +151,19 @@ class App(CommandLineApp):
         rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
         xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
 
-        if self.options.pca:
-            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-            print('Restricting to selected SNPs\n')
-            if not (files_exist(rfiles) or files_exist(xfiles)):
-                self.restrict_to_selected_SNPs()
-            rmapfiles = [rfile + '.map' for rfile in rfiles]
-            assert_files_identical(rmapfiles)
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('Restricting to selected SNPs\n')
+        if not (files_exist(rfiles) or files_exist(xfiles)):
+            self.restrict_to_selected_SNPs()
+        rmapfiles = [rfile + '.map' for rfile in rfiles]
+        assert_files_identical(rmapfiles)
 
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Excluding individuals\n')
         if not files_exist(xfiles):
             self.exclude_individuals()
 
-        if self.options.pca:
+        if self.options.combine_cohorts:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print('Combining data across cohorts\n')
             if not files_exist([excluded_genofile('all', self.snpfile)]):
