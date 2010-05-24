@@ -26,8 +26,9 @@ class App(CommandLineApp):
 
         op.add_option('--pca', dest='pca', default=False, action='store_true',
                       help='Perform PCA of selected cohorts')
-        op.add_option('', '--make-gen', dest='make_gen', default=False, action='store_true',
-                      help="Convert to .gen input data format used by chiamo and related software")
+        op.add_option('', '--make-geno', dest='make_geno', default=False, action='store_true',
+                      help="Convert to .geno input data format used by Dan's PCA software " + \
+                          "(one line per SNP, *no spaces*, {0,1,2,9})")
         op.add_option('--snptest', dest='snptest', default=False, action='store_true',
                       help='Perform association tests of selected cases & controls')
         op.add_option('--sstat', dest='sstat', default=False, action='store_true',
@@ -68,9 +69,9 @@ class App(CommandLineApp):
         self.samplefile = self.options.samplefile
         self.platform = self.options.platform
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
-        self.options.combine_cohorts = self.options.pca or self.options.make_gen
+        self.options.combine_cohorts = self.options.pca or self.options.make_geno
 
-        if self.options.pca or self.options.make_gen:
+        if self.options.pca or self.options.make_geno:
             self.analysis = 'PCA'
             self.cohorts = self.options.cohorts.split()
             self.say_hello()
@@ -94,7 +95,7 @@ class App(CommandLineApp):
             self.sstat()
 
     def sanity_check(self):
-        actions = ['pca','snptest','sstat', 'make_gen']
+        actions = ['pca','snptest','sstat', 'make_geno']
         requested_actions = [getattr(self.options, action) for action in actions]
         if len(filter(None, requested_actions)) != 1:
             raise Exception('Use either %s' % ' or '.join(actions))
@@ -197,7 +198,7 @@ class App(CommandLineApp):
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
             cmd = 'shellfish --make-%s --file %s %s --out %s' % \
-                ('geno' if self.options.pca else 'gen',
+                ('gen' if self.options.snptest else 'geno',
                  coh,
                  '--file2 %s' % self.snpfile if self.snpfile else '',
                  restricted_genofile(coh, self.snpfile) )
@@ -239,15 +240,15 @@ class App(CommandLineApp):
                 (coh, coh)
             system(cmd, verbose=True)
 
-            if self.options.pca:
-                format = 'geno'
-            else:
+            if self.options.snptest:
                 format = 'gen'
                 # Compute columns of .gen file to be excluded
                 idx = map(int, read_lines('%s.xidx' % coh))
                 firstofthree = [6 + (i-1)*3 for i in idx]
                 idx = flatten([range(s, s+3) for s in firstofthree])
                 write_lines(idx, '%s.xidx' % coh)
+            else:
+                format = 'geno'
 
             # Exclude individuals from genotype data
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
