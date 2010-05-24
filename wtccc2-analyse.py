@@ -381,7 +381,7 @@ def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
 
 def restricted_genofile(coh, snpfile):
-    f = coh + 'r'
+    f = self.options.outfile + coh + 'r'
     if snpfile:
         f += '-' + os.path.basename(snpfile)
     return f
@@ -390,7 +390,7 @@ def exclude_dir(coh, platform):
     return '%s/%s/%s/exclusions' % (__datadir__, coh, platform)
 
 def excluded_genofile(coh, snpfile):
-    f = coh + 'x'
+    f = self.options.outfile + coh + 'x'
     if snpfile:
         f += '-' + os.path.basename(snpfile)
     return f
