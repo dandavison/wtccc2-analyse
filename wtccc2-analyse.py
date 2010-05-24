@@ -151,9 +151,9 @@ class App(CommandLineApp):
         rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
         xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
 
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('Restricting to selected SNPs\n')
         if not (files_exist(rfiles) or files_exist(xfiles)):
+            print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+            print('Restricting to selected SNPs\n')
             self.restrict_to_selected_SNPs()
         rmapfiles = [rfile + '.map' for rfile in rfiles]
         assert_files_identical(rmapfiles)
