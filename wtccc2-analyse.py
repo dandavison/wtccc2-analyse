@@ -149,8 +149,8 @@ class App(CommandLineApp):
             maps = [b + '.map' for b in bnames] if self.options.pca else []
             return all(map(os.path.exists, flatten([geno, sample, maps])))
 
-        rfiles = [restricted_genofile(coh, self.snpfile) for coh in self.cohorts]
-        xfiles = [excluded_genofile(coh, self.snpfile) for coh in self.cohorts]
+        rfiles = [self.restricted_genofile(coh) for coh in self.cohorts]
+        xfiles = [self.excluded_genofile(coh) for coh in self.cohorts]
 
         if not (files_exist(rfiles) or files_exist(xfiles)):
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -167,7 +167,7 @@ class App(CommandLineApp):
         if self.options.combine_cohorts:
             print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
             print('Combining data across cohorts\n')
-            if not files_exist([excluded_genofile('all', self.snpfile)]):
+            if not files_exist([self.excluded_genofile('all')]):
                 self.combine_cohorts()
 
     def insect_chromosome_files(self):
@@ -199,9 +199,9 @@ class App(CommandLineApp):
                 ('gen' if self.options.snptest else 'geno',
                  coh,
                  '--file2 %s' % self.snpfile if self.snpfile else '',
-                 restricted_genofile(coh, self.snpfile) )
+                 self.restricted_genofile(coh) )
             system(cmd, verbose=True)
-            system('mv %s.sample %s.sample' % (coh, restricted_genofile(coh, self.snpfile)))
+            system('mv %s.sample %s.sample' % (coh, self.restricted_genofile(coh)))
             system('rm %s.gen' % coh)
 
     def exclude_individuals(self):
@@ -251,33 +251,33 @@ class App(CommandLineApp):
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
                 '-s' if format == 'gen' else '',
                 coh,
-                restricted_genofile(coh, self.snpfile), format,
-                excluded_genofile(coh, self.snpfile), format)
+                self.restricted_genofile(coh), format,
+                self.excluded_genofile(coh), format)
             system(cmd, verbose=True)
                 
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
-                (sample_file(coh, self.platform), coh, excluded_genofile(coh, self.snpfile))
+                (sample_file(coh, self.platform), coh, self.excluded_genofile(coh))
             system(cmd, verbose=True)
 
             # clean up
-            system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format), verbose=True)
+            system('rm %s.%s' % (self.restricted_genofile(coh), format), verbose=True)
             system('rm %s.xids %s.xidx' % (coh, coh))
 
             if format == 'geno':
                 system('mv %s.map %s.map' % (
-                        restricted_genofile(coh, self.snpfile),
-                        excluded_genofile(coh, self.snpfile)), verbose=True)
+                        self.restricted_genofile(coh),
+                        self.excluded_genofile(coh)), verbose=True)
             system('mv %s.sample %s.sample' % (
-                    restricted_genofile(coh, self.snpfile),
-                    excluded_genofile(coh, self.snpfile)), verbose=True)
+                    self.restricted_genofile(coh),
+                    self.excluded_genofile(coh)), verbose=True)
 
     def combine_cohorts(self):
-        geno_files = [excluded_genofile(coh, self.snpfile) + '.geno' for coh in self.cohorts]
-        map_files = [excluded_genofile(coh, self.snpfile) + '.map' for coh in self.cohorts]
-        id_files = [excluded_genofile(coh, self.snpfile) + '.ids' for coh in self.cohorts]
-        sample_files = [excluded_genofile(coh, self.snpfile) + '.sample' for coh in self.cohorts]
-        combined_basename = excluded_genofile('all', self.snpfile)
+        geno_files = [self.excluded_genofile(coh) + '.geno' for coh in self.cohorts]
+        map_files = [self.excluded_genofile(coh) + '.map' for coh in self.cohorts]
+        id_files = [self.excluded_genofile(coh) + '.ids' for coh in self.cohorts]
+        sample_files = [self.excluded_genofile(coh) + '.sample' for coh in self.cohorts]
+        combined_basename = self.excluded_genofile('all')
 
         ## Combine genotype data across cohorts
         cmd = "paste -d '\\0' %s > %s.geno" % (' '.join(geno_files), combined_basename)
@@ -298,8 +298,8 @@ class App(CommandLineApp):
         map(os.remove, sample_files)
 
     def snptest(self):
-        case_files = [excluded_genofile(coh, self.snpfile) for coh in self.cases]
-        control_files = [excluded_genofile(coh, self.snpfile) for coh in self.controls]
+        case_files = [self.excluded_genofile(coh) for coh in self.cases]
+        control_files = [self.excluded_genofile(coh) for coh in self.controls]
 
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
@@ -341,17 +341,17 @@ class App(CommandLineApp):
         remote_dir = 'shellfish-%s' % datetimenow()
         print('Running shellfish on %s in %s\n' % (remote, remote_dir))
 
-        if not os.path.exists(excluded_genofile('all', self.snpfile) + '.evecs'):
+        if not os.path.exists(self.excluded_genofile('all') + '.evecs'):
 
             cmd = "ssh %s 'mkdir -p %s'" % (remote, remote_dir)
             system(cmd)
             
-            tup = ((excluded_genofile('all', self.snpfile),) * 3) + (remote, remote_dir)
+            tup = ((self.excluded_genofile('all'),) * 3) + (remote, remote_dir)
             cmd = 'scp %s.geno %s.map %s.ids %s:%s/' % tup
             system(cmd)
             
             remote_cmd = "shellfish --pca --sge --sge-level 2 --numpcs 10 --maxprocs 500 "
-            remote_cmd += "--file %s --out %s" % ((excluded_genofile('all', self.snpfile),) * 2)
+            remote_cmd += "--file %s --out %s" % ((self.excluded_genofile('all'),) * 2)
             remote_cmd = "'cd %s && nohup %s < /dev/null > log 2>&1'" % (remote_dir, remote_cmd)
 
             cmd = 'ssh %s %s &' % (remote, remote_cmd)
@@ -369,6 +369,18 @@ class App(CommandLineApp):
             system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
                     gen_gz_file(coh, chrom, self.platform), nsample, self.options.factor_file, coh, chrom), verbose=True)
 
+    def restricted_genofile(self, coh):
+        f = self.options.outfile + coh + 'r'
+        if self.snpfile:
+            f += '-' + os.path.basename(self.snpfile)
+        return f
+    
+    def excluded_genofile(self, coh):
+        f = self.options.outfile + coh + 'x'
+        if self.snpfile:
+            f += '-' + os.path.basename(self.snpfile)
+        return f
+
 def gen_gz_file(coh, chrom, platform):
     return '%s/%s/%s/calls/%s_%02d_%s.gen.gz' % \
         (__datadir__, coh, platform, coh, chrom, platform)
@@ -380,20 +392,8 @@ def sample_file(coh, platform):
 def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
 
-def restricted_genofile(coh, snpfile):
-    f = self.options.outfile + coh + 'r'
-    if snpfile:
-        f += '-' + os.path.basename(snpfile)
-    return f
-
 def exclude_dir(coh, platform):
     return '%s/%s/%s/exclusions' % (__datadir__, coh, platform)
-
-def excluded_genofile(coh, snpfile):
-    f = self.options.outfile + coh + 'x'
-    if snpfile:
-        f += '-' + os.path.basename(snpfile)
-    return f
 
 def Popen(cmd, shell=False, stdout=None):
     print(' '.join(cmd) + (' > ' + stdout.name if stdout else ''))
