@@ -379,7 +379,7 @@ def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
 
 def restricted_genofile(coh, snpfile):
-    f = coh
+    f = coh + 'r'
     if snpfile:
         f += '-' + os.path.basename(snpfile)
     return f
