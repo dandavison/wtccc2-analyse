@@ -115,8 +115,6 @@ class App(CommandLineApp):
                 raise Exception('Select a single cohort with --sstat')
         if self.platform not in ['illumina','affymetrix']:
             raise Exception('Select platform using --platform illumina or --platform affymetrix')
-        if not self.options.snpfile:
-            raise Exception('Specify SNPs to include with --snpfile')
 
     def say_hello(self):
         print(time.ctime())
