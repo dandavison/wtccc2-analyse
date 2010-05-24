@@ -39,7 +39,7 @@ class App(CommandLineApp):
                       help='Space-separated list of case cohorts')
         op.add_option('--controls', dest='controls', type='string', default='',
                       help='Space-separated list of control cohorts') 
-        op.add_option('--outfile', dest='outfile', type='string', default='results',
+        op.add_option('--outfile', dest='outfile', type='string', default=None,
                       help='Name of output file')
         op.add_option('--local', dest='local', default=False, action='store_true',
                       help='Run PCA / snptest locally, not on the cluster')
@@ -115,6 +115,8 @@ class App(CommandLineApp):
                 raise Exception('Select a single cohort with --sstat')
         if self.platform not in ['illumina','affymetrix']:
             raise Exception('Select platform using --platform illumina or --platform affymetrix')
+        if self.options.outfile is None:
+            raise Exception('Supply output filename prefix with --outfile')
 
     def say_hello(self):
         print(time.ctime())
@@ -122,6 +124,7 @@ class App(CommandLineApp):
         print('Cohorts'.ljust(__width__) + '%s' % self.cohorts)
         print('Chromosomes'.ljust(__width__) + '%s' % self.chroms)
         print('SNP file'.ljust(__width__) + '%s' % self.snpfile)
+        print('Output file/prefix'.ljust(__width__) + '%s' % self.options.outfile)
         if self.options.dry_run:
             print('Dry run')
 
