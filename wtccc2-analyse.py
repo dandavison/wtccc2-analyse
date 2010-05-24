@@ -262,7 +262,7 @@ class App(CommandLineApp):
             system(cmd, verbose=True)
 
             system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format), verbose=True)
-            if format == '.geno':
+            if format == 'geno':
                 system('mv %s.map %s.map' % (
                         restricted_genofile(coh, self.snpfile),
                         excluded_genofile(coh, self.snpfile)), verbose=True)
