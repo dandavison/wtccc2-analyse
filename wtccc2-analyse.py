@@ -260,7 +260,10 @@ class App(CommandLineApp):
                 (sample_file(coh, self.platform), coh, excluded_genofile(coh, self.snpfile))
             system(cmd, verbose=True)
 
+            # clean up
             system('rm %s.%s' % (restricted_genofile(coh, self.snpfile), format), verbose=True)
+            system('rm %s.xids %s.xidx' % (coh, coh))
+
             if format == 'geno':
                 system('mv %s.map %s.map' % (
                         restricted_genofile(coh, self.snpfile),
@@ -273,6 +276,7 @@ class App(CommandLineApp):
         geno_files = [excluded_genofile(coh, self.snpfile) + '.geno' for coh in self.cohorts]
         map_files = [excluded_genofile(coh, self.snpfile) + '.map' for coh in self.cohorts]
         id_files = [excluded_genofile(coh, self.snpfile) + '.ids' for coh in self.cohorts]
+        sample_files = [excluded_genofile(coh, self.snpfile) + '.sample' for coh in self.cohorts]
         combined_basename = excluded_genofile('all', self.snpfile)
 
         ## Combine genotype data across cohorts
@@ -291,6 +295,7 @@ class App(CommandLineApp):
         map(os.remove, geno_files)
         map(os.remove, map_files)
         map(os.remove, id_files)
+        map(os.remove, sample_files)
 
     def snptest(self):
         case_files = [excluded_genofile(coh, self.snpfile) for coh in self.cases]
