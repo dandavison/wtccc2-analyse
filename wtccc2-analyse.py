@@ -273,7 +273,7 @@ class App(CommandLineApp):
                     self.excluded_genofile(coh)), verbose=True)
 
     def combine_cohorts(self):
-        gen_files = [self.excluded_genofile(coh) + self.format for coh in self.cohorts]
+        gen_files = [self.excluded_genofile(coh) + '.' + self.format for coh in self.cohorts]
         map_files = [self.excluded_genofile(coh) + '.map' for coh in self.cohorts]
         id_files = [self.excluded_genofile(coh) + '.ids' for coh in self.cohorts]
         sample_files = [self.excluded_genofile(coh) + '.sample' for coh in self.cohorts]
