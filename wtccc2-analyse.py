@@ -295,7 +295,7 @@ class App(CommandLineApp):
                 system("cut -d ' ' -f 6- < %s > %s" % (gen_file, gen_only_file), verbose=True)
             assert_files_identical(map_files)
             cmd = "paste -d ' ' %s %s > %s.gen" % (
-                gen_files[0], gen_only_files[1:], combined_basename)
+                gen_files[0], ' '.join(gen_only_files[1:]), combined_basename)
             system(cmd, verbose=True)
             map(os.remove, gen_only_files)
 
