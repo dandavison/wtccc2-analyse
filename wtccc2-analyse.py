@@ -69,6 +69,7 @@ class App(CommandLineApp):
         self.platform = self.options.platform
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
         self.options.combine_cohorts = self.options.pca or self.options.make_gen
+        self.format = 'geno' if self.options.pca else 'gen'
 
         if self.options.pca or self.options.make_gen:
             self.analysis = 'PCA'
@@ -275,26 +276,38 @@ class App(CommandLineApp):
                     self.excluded_genofile(coh)), verbose=True)
 
     def combine_cohorts(self):
-        geno_files = [self.excluded_genofile(coh) + '.geno' for coh in self.cohorts]
+        gen_files = [self.excluded_genofile(coh) + self.format for coh in self.cohorts]
         map_files = [self.excluded_genofile(coh) + '.map' for coh in self.cohorts]
         id_files = [self.excluded_genofile(coh) + '.ids' for coh in self.cohorts]
         sample_files = [self.excluded_genofile(coh) + '.sample' for coh in self.cohorts]
         combined_basename = self.excluded_genofile('all')
 
         ## Combine genotype data across cohorts
-        cmd = "paste -d '\\0' %s > %s.geno" % (' '.join(geno_files), combined_basename)
-        system(cmd, verbose=True)
+        if self.format == 'geno':
+            cmd = "paste -d '\\0' %s > %s.geno" % (' '.join(gen_files), combined_basename)
+            system(cmd, verbose=True)
+    
+            ## Propagate .map file
+            cmd = 'cp %s %s.map' % (map_files[0], combined_basename)
+            system(cmd, verbose=True)
+
+        else:
+            gen_only_files = [self.excluded_genofile(coh) + '.gen_only' for coh in self.cohorts]
+            for (gen_file, map_file, gen_only_file) in zip(gen_files, map_files, gen_only_files):
+                system("cut -d ' ' -f 1-5 < %s > %s" % (gen_file, map_file), verbose=True)
+                system("cut -d ' ' -f 6, < %s > %s" % (gen_file, gen_only_file), verbose=True)
+            assert_files_identical(map_files)
+            cmd = "paste -d ' ' %s %s > %s.gen" % (
+                gen_files[0], gen_only_files[1:], combined_basename)
+            system(cmd, verbose=True)
+            map(os.remove, gen_only_files)
 
         ## Combine .ids files
         cmd = 'cat %s > %s.ids' % (' '.join(id_files), combined_basename)
         system(cmd, verbose=True)
-        
-        ## Propagate .map file
-        cmd = 'cp %s %s.map' % (map_files[0], combined_basename)
-        system(cmd, verbose=True)
-
+            
         ## Clean up
-        map(os.remove, geno_files)
+        map(os.remove, gen_files)
         map(os.remove, map_files)
         map(os.remove, id_files)
         map(os.remove, sample_files)
