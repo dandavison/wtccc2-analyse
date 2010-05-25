@@ -211,6 +211,7 @@ class App(CommandLineApp):
 
     def exclude_individuals(self):
         for coh in self.cohorts:
+            coh_outfile = opts.outfile + '-' + coh
             
             # Make sorted list of IDs to be excluded
             if opts.samplefile is None or \
@@ -218,53 +219,53 @@ class App(CommandLineApp):
                 project_excludeglob =  exclude_dir(coh, opts.platform) + '/*.exclude.txt'
                 ## TODO: test for non-empty glob expansion
                 cmd = 'cat %s %s | sort | uniq > %s.xids' % \
-                    (project_excludeglob, opts.excludefile or "", coh)
+                    (project_excludeglob, opts.excludefile or "", coh_outfile)
             else:
                 ## Get IDs to keep
-                tempfile = "/tmp/%s-%s.ids" % (opts.outfile, coh)
+                tempfile = "/tmp/%s.ids" % (coh_outfile)
                 cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
                     (user_sample_file(opts.samplefile, coh), tempfile)
                 cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
-                    (wtccc2_sample_file(coh, opts.platform), tempfile, coh)   
+                    (wtccc2_sample_file(coh, opts.platform), tempfile, coh_outfile)   
             system(cmd, verbose=True)
 
             # Get cohort indices of individuals to be excluded
             # These are the (line index in sample file) - 2, because sample file has 2 header lines.
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
-                (wtccc2_sample_file(coh, opts.platform), coh, coh)
+                (wtccc2_sample_file(coh, opts.platform), coh_outfile, coh_outfile)
             system(cmd, verbose=True)
 
             # Check for IDs that did not appear in cohort sample file
             cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
-                (coh, coh)
+                (coh, coh_outfile)
             system(cmd)
             cmd = 'grep -vF NA %s.xidx | sort -n > %s-tmp && mv %s-tmp %s.xidx' % \
-                (coh, coh, opts.outfile, opts.outfile)
+                (coh_outfile, coh_outfile, coh_outfile, coh_outfile)
             system(cmd, verbose=True)
 
             if self.format == 'gen':
                 # Compute columns of .gen file to be excluded
-                idx = map(int, read_lines('%s.xidx' % coh))
+                idx = map(int, read_lines('%s.xidx' % coh_outfile))
                 firstofthree = [6 + (i-1)*3 for i in idx]
                 idx = flatten([range(s, s+3) for s in firstofthree])
-                write_lines(map(str, idx), '%s.xidx' % coh)
+                write_lines(map(str, idx), '%s.xidx' % coh_outfile)
 
             # Exclude individuals from genotype data
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
                 '-s' if self.format == 'gen' else '',
-                coh,
+                coh_outfile,
                 self.restricted_genofile(coh), self.format,
                 self.excluded_genofile(coh), self.format)
             system(cmd, verbose=True)
                 
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
-                (wtccc2_sample_file(coh, opts.platform), coh, self.excluded_genofile(coh))
+                (wtccc2_sample_file(coh, opts.platform), coh_outfile, self.excluded_genofile(coh))
             system(cmd, verbose=True)
 
             # clean up
             system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
-            system('rm %s.xids %s.xidx' % (coh, coh))
+            system('rm %s.xids %s.xidx' % (coh_outfile, coh_outfile))
 
             if self.format == 'geno':
                 system('mv %s.map %s.map' % (
