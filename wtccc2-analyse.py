@@ -187,9 +187,9 @@ class App(CommandLineApp):
             map(os.remove, fnames)
 
     def concatenate_chromosomes(self):
-        gen_file = opts.outfile + coh + '.gen'
-        sample_file = opts.outfile + coh + '.sample'
         for coh in self.cohorts:
+            gen_file = opts.outfile + coh + '.gen'
+            sample_file = opts.outfile + coh + '.sample'
             with open(gen_file, 'w') as f:
                 cmd = 'cat %s/%s-*' % (self.insect_dir, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
