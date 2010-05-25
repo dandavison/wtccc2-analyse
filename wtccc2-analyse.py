@@ -10,7 +10,6 @@ __width__ = 30
 __home__ = subprocess.Popen('echo $HOME', shell=True, stdout=PIPE).communicate()[0].strip()
 __datadir__ = '/data/oak/project/wtccc2'
 __dry_run__ = False
-__insectdir__ = 'insect_out'
 __progname__ = 'wtccc2-analyse'
 
 class App(CommandLineApp):
@@ -70,6 +69,7 @@ class App(CommandLineApp):
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
         self.options.combine_cohorts = self.options.pca or self.options.make_gen
         self.format = 'geno' if self.options.pca else 'gen'
+        self.insect_dir = self.outfile + 'insect_out'
 
         if self.options.pca or self.options.make_gen:
             self.analysis = 'PCA'
@@ -131,7 +131,7 @@ class App(CommandLineApp):
     def create_data_set(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Intersecting chromosome files\n')
-        fnames = ['%s/%s-%02d.tmp' % (__insectdir__, coh, chrom) \
+        fnames = ['%s/%s-%02d.tmp' % (self.insect_dir, coh, chrom) \
                       for coh in self.cohorts \
                       for chrom in self.chroms]
         if not all(map(os.path.exists, fnames)):
@@ -142,8 +142,8 @@ class App(CommandLineApp):
         fnames = [coh + '.gen' for coh in self.cohorts]
         if not all(map(os.path.exists, fnames)):
             self.concatenate_chromosomes()
-            system('rm %s/*' % __insectdir__)
-            system('rmdir %s' % __insectdir__)
+            system('rm %s/*' % self.insect_dir)
+            system('rmdir %s' % self.insect_dir)
 
         def files_exist(bnames):
             geno = [b + '.' + self.format for b in bnames]
@@ -173,7 +173,7 @@ class App(CommandLineApp):
                 self.combine_cohorts()
 
     def insect_chromosome_files(self):
-        outdir = __insectdir__
+        outdir = self.insect_dir
         if not os.path.exists(outdir): os.mkdir(outdir)
         for chrom in self.chroms:
             fnames = ['%s-%02d.tmp' % (coh, chrom) for coh in self.cohorts]
@@ -188,12 +188,14 @@ class App(CommandLineApp):
             map(os.remove, fnames)
 
     def concatenate_chromosomes(self):
+        gen_file = self.options.outfile + coh + '.gen'
+        sample_file = self.options.outfile + coh + '.sample'
         for coh in self.cohorts:
-            with open(coh + '.gen', 'w') as f:
-                cmd = 'cat %s/%s-*' % (__insectdir__, coh)
+            with open(gen_file, 'w') as f:
+                cmd = 'cat %s/%s-*' % (self.insect_dir, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
-            if not(os.path.exists(coh + '.sample')):
-                os.symlink(sample_file(coh, self.platform), coh + '.sample')
+            if not(os.path.exists(sample_file)):
+                os.symlink(sample_file(coh, self.platform), sample_file)
 
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
