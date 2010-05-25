@@ -68,7 +68,7 @@ class App(CommandLineApp):
         opts.snptest_opts = opts.snptest_opts.replace('*', ' ')
         opts.combine_cohorts = opts.pca or opts.make_gen
         self.format = 'geno' if opts.pca else 'gen'
-        self.insect_dir = opts.outfile + 'insect_out'
+        self.insect_dir = opts.outfile + '-' + 'insect_out'
 
         if opts.pca or opts.make_gen:
             self.analysis = 'PCA'
