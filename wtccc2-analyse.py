@@ -188,8 +188,8 @@ class App(CommandLineApp):
 
     def concatenate_chromosomes(self):
         for coh in self.cohorts:
-            gen_file = opts.outfile + coh + '.gen'
-            sample_file = opts.outfile + coh + '.sample'
+            gen_file = opts.outfile + '-' + coh + '.gen'
+            sample_file = opts.outfile + '-' + coh + '.sample'
             with open(gen_file, 'w') as f:
                 cmd = 'cat %s/%s-*' % (self.insect_dir, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
@@ -383,13 +383,13 @@ class App(CommandLineApp):
                     gen_gz_file(coh, chrom, opts.platform), nsample, opts.factor_file, coh, chrom), verbose=True)
 
     def restricted_genofile(self, coh):
-        f = opts.outfile + coh + 'r'
+        f = opts.outfile + '-' + coh + 'r'
         if opts.snpfile:
             f += '-' + os.path.basename(opts.snpfile)
         return f
     
     def excluded_genofile(self, coh):
-        f = opts.outfile + coh + 'x'
+        f = opts.outfile + '-' + coh + 'x'
         if opts.snpfile:
             f += '-' + os.path.basename(opts.snpfile)
         return f
