@@ -251,8 +251,8 @@ class App(CommandLineApp):
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
                 '-s' if self.format == 'gen' else '',
                 coh,
-                self.restricted_genofile(coh), format,
-                self.excluded_genofile(coh), format)
+                self.restricted_genofile(coh), self.format,
+                self.excluded_genofile(coh), self.format)
             system(cmd, verbose=True)
                 
             # Get IDs of included individuals
@@ -261,7 +261,7 @@ class App(CommandLineApp):
             system(cmd, verbose=True)
 
             # clean up
-            system('rm %s.%s' % (self.restricted_genofile(coh), format), verbose=True)
+            system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
             system('rm %s.xids %s.xidx' % (coh, coh))
 
             if self.format == 'geno':
