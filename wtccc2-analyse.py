@@ -292,7 +292,7 @@ class App(CommandLineApp):
             gen_only_files = [self.excluded_genofile(coh) + '.gen_only' for coh in self.cohorts]
             for (gen_file, map_file, gen_only_file) in zip(gen_files, map_files, gen_only_files):
                 system("cut -d ' ' -f 1-5 < %s > %s" % (gen_file, map_file), verbose=True)
-                system("cut -d ' ' -f 6, < %s > %s" % (gen_file, gen_only_file), verbose=True)
+                system("cut -d ' ' -f 6- < %s > %s" % (gen_file, gen_only_file), verbose=True)
             assert_files_identical(map_files)
             cmd = "paste -d ' ' %s %s > %s.gen" % (
                 gen_files[0], gen_only_files[1:], combined_basename)
