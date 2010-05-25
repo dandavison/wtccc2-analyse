@@ -62,9 +62,9 @@ class App(CommandLineApp):
         global opts
         opts = self.options
         if opts.chroms:
-            self.chroms = map(int, opts.chroms.split())
+            opts.chroms = map(int, opts.chroms.split())
         else:
-            self.chroms = [c+1 for c in range(22)]
+            opts.chroms = [c+1 for c in range(22)]
         opts.snptest_opts = opts.snptest_opts.replace('*', ' ')
         opts.combine_cohorts = opts.pca or opts.make_gen
         self.format = 'geno' if opts.pca else 'gen'
@@ -121,7 +121,7 @@ class App(CommandLineApp):
         print(time.ctime())
         print('Analysis'.ljust(__width__) + '%s' % self.analysis)
         print('Cohorts'.ljust(__width__) + '%s' % self.cohorts)
-        print('Chromosomes'.ljust(__width__) + '%s' % self.chroms)
+        print('Chromosomes'.ljust(__width__) + '%s' % opts.chroms)
         print('SNP file'.ljust(__width__) + '%s' % opts.snpfile)
         print('Output file/prefix'.ljust(__width__) + '%s' % opts.outfile)
         if opts.dry_run:
@@ -132,7 +132,7 @@ class App(CommandLineApp):
         print('Intersecting chromosome files\n')
         fnames = ['%s/%s-%02d.tmp' % (self.insect_dir, coh, chrom) \
                       for coh in self.cohorts \
-                      for chrom in self.chroms]
+                      for chrom in opts.chroms]
         if not all(map(os.path.exists, fnames)):
             self.insect_chromosome_files()
 
@@ -174,7 +174,7 @@ class App(CommandLineApp):
     def insect_chromosome_files(self):
         outdir = self.insect_dir
         if not os.path.exists(outdir): os.mkdir(outdir)
-        for chrom in self.chroms:
+        for chrom in opts.chroms:
             fnames = ['%s-%s-%02d.tmp' % (opts.outfile, coh, chrom) for coh in self.cohorts]
             for i in range(len(self.cohorts)):
                 coh = self.cohorts[i]
@@ -378,7 +378,7 @@ class App(CommandLineApp):
         if nsample != nfac:
             raise Exception('Number of individuals in sample file (%d) does not match number if factor file (%d)' % (
                     (nsample, nfac)))
-        for chrom in self.chroms:
+        for chrom in opts.chroms:
             system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
                     gen_gz_file(coh, chrom, opts.platform), nsample, opts.factor_file, coh, chrom), verbose=True)
 
