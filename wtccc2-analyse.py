@@ -69,7 +69,7 @@ class App(CommandLineApp):
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
         self.options.combine_cohorts = self.options.pca or self.options.make_gen
         self.format = 'geno' if self.options.pca else 'gen'
-        self.insect_dir = self.outfile + 'insect_out'
+        self.insect_dir = self.options.outfile + 'insect_out'
 
         if self.options.pca or self.options.make_gen:
             self.analysis = 'PCA'
@@ -176,7 +176,7 @@ class App(CommandLineApp):
         outdir = self.insect_dir
         if not os.path.exists(outdir): os.mkdir(outdir)
         for chrom in self.chroms:
-            fnames = ['%s-%s-%02d.tmp' % (self.outfile, coh, chrom) for coh in self.cohorts]
+            fnames = ['%s-%s-%02d.tmp' % (self.options.outfile, coh, chrom) for coh in self.cohorts]
             for i in range(len(self.cohorts)):
                 coh = self.cohorts[i]
                 with open(fnames[i], 'w') as f:
@@ -221,7 +221,7 @@ class App(CommandLineApp):
                     (project_excludeglob, self.options.excludefile or "", coh)
             else:
                 ## Get IDs to keep
-                tempfile = "/tmp/%s-%s.ids" % (self.outfile, coh)
+                tempfile = "/tmp/%s-%s.ids" % (self.options.outfile, coh)
                 cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
                     (user_sample_file(self.samplefile, coh), tempfile)
                 cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
@@ -239,7 +239,7 @@ class App(CommandLineApp):
                 (coh, coh)
             system(cmd)
             cmd = 'grep -vF NA %s.xidx | sort -n > %s-tmp && mv %s-tmp %s.xidx' % \
-                (coh, coh, self.outfile, self.outfile)
+                (coh, coh, self.options.outfile, self.options.outfile)
             system(cmd, verbose=True)
 
             if self.format == 'gen':
