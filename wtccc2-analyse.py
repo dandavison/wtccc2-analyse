@@ -204,7 +204,8 @@ class App(CommandLineApp):
                  self.restricted_genofile(coh) )
             system(cmd, verbose=True)
             system('mv %s.sample %s.sample' % (coh, self.restricted_genofile(coh)))
-            system('rm %s.gen' % coh)
+            if self.snpfile or self.format == 'geno': # In which case a new genotype file has been created
+                system('rm %s.gen' % coh)
 
     def exclude_individuals(self):
         for coh in self.cohorts:
