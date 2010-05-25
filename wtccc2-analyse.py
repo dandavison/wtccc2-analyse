@@ -146,10 +146,9 @@ class App(CommandLineApp):
             system('rmdir %s' % __insectdir__)
 
         def files_exist(bnames):
-            format = 'geno' if self.options.pca else 'gen'
-            geno = [b + '.' + format for b in bnames]
+            geno = [b + '.' + self.format for b in bnames]
             sample = [b + '.sample' for b in bnames]
-            maps = [b + '.map' for b in bnames] if self.options.pca else []
+            maps = [b + '.map' for b in bnames] if self.format == 'geno' else []
             return all(map(os.path.exists, flatten([geno, sample, maps])))
 
         rfiles = [self.restricted_genofile(coh) for coh in self.cohorts]
@@ -199,7 +198,7 @@ class App(CommandLineApp):
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
             cmd = 'shellfish --make-%s --file %s %s --out %s' % \
-                ('geno' if self.options.pca else 'gen',
+                (self.format,
                  coh,
                  '--file2 %s' % self.snpfile if self.snpfile else '',
                  self.restricted_genofile(coh) )
@@ -240,10 +239,7 @@ class App(CommandLineApp):
                 (coh, coh)
             system(cmd, verbose=True)
 
-            if self.options.pca:
-                format = 'geno'
-            else:
-                format = 'gen'
+            if self.format == 'gen':
                 # Compute columns of .gen file to be excluded
                 idx = map(int, read_lines('%s.xidx' % coh))
                 firstofthree = [6 + (i-1)*3 for i in idx]
@@ -252,7 +248,7 @@ class App(CommandLineApp):
 
             # Exclude individuals from genotype data
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
-                '-s' if format == 'gen' else '',
+                '-s' if self.format == 'gen' else '',
                 coh,
                 self.restricted_genofile(coh), format,
                 self.excluded_genofile(coh), format)
@@ -267,7 +263,7 @@ class App(CommandLineApp):
             system('rm %s.%s' % (self.restricted_genofile(coh), format), verbose=True)
             system('rm %s.xids %s.xidx' % (coh, coh))
 
-            if format == 'geno':
+            if self.format == 'geno':
                 system('mv %s.map %s.map' % (
                         self.restricted_genofile(coh),
                         self.excluded_genofile(coh)), verbose=True)
