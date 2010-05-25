@@ -194,7 +194,7 @@ class App(CommandLineApp):
                 cmd = 'cat %s/%s-%s-*' % (self.insect_dir, opts.outfile, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
             if not(os.path.exists(sample_file)):
-                os.symlink(sample_file(coh, opts.platform), sample_file)
+                os.symlink(wtccc2_sample_file(coh, opts.platform), sample_file)
 
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
@@ -224,13 +224,13 @@ class App(CommandLineApp):
                 cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
                     (user_sample_file(opts.samplefile, coh), tempfile)
                 cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
-                    (sample_file(coh, opts.platform), tempfile, coh)   
+                    (wtccc2_sample_file(coh, opts.platform), tempfile, coh)   
             system(cmd, verbose=True)
 
             # Get cohort indices of individuals to be excluded
             # These are the (line index in sample file) - 2, because sample file has 2 header lines.
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
-                (sample_file(coh, opts.platform), coh, coh)
+                (wtccc2_sample_file(coh, opts.platform), coh, coh)
             system(cmd, verbose=True)
 
             # Check for IDs that did not appear in cohort sample file
@@ -258,7 +258,7 @@ class App(CommandLineApp):
                 
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
-                (sample_file(coh, opts.platform), coh, self.excluded_genofile(coh))
+                (wtccc2_sample_file(coh, opts.platform), coh, self.excluded_genofile(coh))
             system(cmd, verbose=True)
 
             # clean up
@@ -373,7 +373,7 @@ class App(CommandLineApp):
     def sstat(self):
         """Run sstat on each cohort file for each chromosome"""
         coh = self.cohorts[0]
-        nsample = count_lines(sample_file(coh, opts.platform)) - 2 
+        nsample = count_lines(wtccc2_sample_file(coh, opts.platform)) - 2 
         nfac = count_lines(opts.factor_file)
         if nsample != nfac:
             raise Exception('Number of individuals in sample file (%d) does not match number if factor file (%d)' % (
@@ -398,7 +398,7 @@ def gen_gz_file(coh, chrom, platform):
     return '%s/%s/%s/calls/%s_%02d_%s.gen.gz' % \
         (__datadir__, coh, platform, coh, chrom, platform)
 
-def sample_file(coh, platform):
+def wtccc2_sample_file(coh, platform):
     return '%s/%s/%s/calls/%s_%s.sample' % \
         (__datadir__, coh, platform, coh, platform)
 
