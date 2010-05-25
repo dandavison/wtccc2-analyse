@@ -63,9 +63,6 @@ class App(CommandLineApp):
             self.chroms = map(int, self.options.chroms.split())
         else:
             self.chroms = [c+1 for c in range(22)]
-        self.snpfile = self.options.snpfile
-        self.samplefile = self.options.samplefile
-        self.platform = self.options.platform
         self.options.snptest_opts = self.options.snptest_opts.replace('*', ' ')
         self.options.combine_cohorts = self.options.pca or self.options.make_gen
         self.format = 'geno' if self.options.pca else 'gen'
@@ -113,7 +110,7 @@ class App(CommandLineApp):
             if len(self.cohorts) != 1:
                 print(self.cohorts)
                 raise Exception('Select a single cohort with --sstat')
-        if self.platform not in ['illumina','affymetrix']:
+        if self.options.platform not in ['illumina','affymetrix']:
             raise Exception('Select platform using --platform illumina or --platform affymetrix')
         if self.options.outfile is None:
             raise Exception('Supply output filename prefix with --outfile')
@@ -123,7 +120,7 @@ class App(CommandLineApp):
         print('Analysis'.ljust(__width__) + '%s' % self.analysis)
         print('Cohorts'.ljust(__width__) + '%s' % self.cohorts)
         print('Chromosomes'.ljust(__width__) + '%s' % self.chroms)
-        print('SNP file'.ljust(__width__) + '%s' % self.snpfile)
+        print('SNP file'.ljust(__width__) + '%s' % self.options.snpfile)
         print('Output file/prefix'.ljust(__width__) + '%s' % self.options.outfile)
         if self.options.dry_run:
             print('Dry run')
@@ -180,7 +177,7 @@ class App(CommandLineApp):
             for i in range(len(self.cohorts)):
                 coh = self.cohorts[i]
                 with open(fnames[i], 'w') as f:
-                    Popen(['gunzip', '-vc', gen_gz_file(coh, chrom, self.platform)], stdout=f).communicate()
+                    Popen(['gunzip', '-vc', gen_gz_file(coh, chrom, self.options.platform)], stdout=f).communicate()
                     
             cmd = ['insect', '-v', '--unique', "-d ' '", '-f 2', '-o ' + outdir] + fnames
             # subprocess.Popen(cmd, shell=True).communicate()
@@ -195,27 +192,27 @@ class App(CommandLineApp):
                 cmd = 'cat %s/%s-*' % (self.insect_dir, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
             if not(os.path.exists(sample_file)):
-                os.symlink(sample_file(coh, self.platform), sample_file)
+                os.symlink(sample_file(coh, self.options.platform), sample_file)
 
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
             cmd = 'shellfish --make-%s --file %s %s --out %s' % \
                 (self.format,
                  coh,
-                 '--file2 %s' % self.snpfile if self.snpfile else '',
+                 '--file2 %s' % self.options.snpfile if self.options.snpfile else '',
                  self.restricted_genofile(coh) )
             system(cmd, verbose=True)
             system('mv %s.sample %s.sample' % (coh, self.restricted_genofile(coh)))
-            if self.snpfile or self.format == 'geno': # In which case a new genotype file has been created
+            if self.options.snpfile or self.format == 'geno': # In which case a new genotype file has been created
                 system('rm %s.gen' % coh)
 
     def exclude_individuals(self):
         for coh in self.cohorts:
             
             # Make sorted list of IDs to be excluded
-            if self.samplefile is None or \
-                    not os.path.exists(user_sample_file(self.samplefile, coh)):
-                project_excludeglob =  exclude_dir(coh, self.platform) + '/*.exclude.txt'
+            if self.options.samplefile is None or \
+                    not os.path.exists(user_sample_file(self.options.samplefile, coh)):
+                project_excludeglob =  exclude_dir(coh, self.options.platform) + '/*.exclude.txt'
                 ## TODO: test for non-empty glob expansion
                 cmd = 'cat %s %s | sort | uniq > %s.xids' % \
                     (project_excludeglob, self.options.excludefile or "", coh)
@@ -223,15 +220,15 @@ class App(CommandLineApp):
                 ## Get IDs to keep
                 tempfile = "/tmp/%s-%s.ids" % (self.options.outfile, coh)
                 cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
-                    (user_sample_file(self.samplefile, coh), tempfile)
+                    (user_sample_file(self.options.samplefile, coh), tempfile)
                 cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
-                    (sample_file(coh, self.platform), tempfile, coh)   
+                    (sample_file(coh, self.options.platform), tempfile, coh)   
             system(cmd, verbose=True)
 
             # Get cohort indices of individuals to be excluded
             # These are the (line index in sample file) - 2, because sample file has 2 header lines.
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
-                (sample_file(coh, self.platform), coh, coh)
+                (sample_file(coh, self.options.platform), coh, coh)
             system(cmd, verbose=True)
 
             # Check for IDs that did not appear in cohort sample file
@@ -259,7 +256,7 @@ class App(CommandLineApp):
                 
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
-                (sample_file(coh, self.platform), coh, self.excluded_genofile(coh))
+                (sample_file(coh, self.options.platform), coh, self.excluded_genofile(coh))
             system(cmd, verbose=True)
 
             # clean up
@@ -374,25 +371,25 @@ class App(CommandLineApp):
     def sstat(self):
         """Run sstat on each cohort file for each chromosome"""
         coh = self.cohorts[0]
-        nsample = count_lines(sample_file(coh, self.platform)) - 2 
+        nsample = count_lines(sample_file(coh, self.options.platform)) - 2 
         nfac = count_lines(self.options.factor_file)
         if nsample != nfac:
             raise Exception('Number of individuals in sample file (%d) does not match number if factor file (%d)' % (
                     (nsample, nfac)))
         for chrom in self.chroms:
             system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
-                    gen_gz_file(coh, chrom, self.platform), nsample, self.options.factor_file, coh, chrom), verbose=True)
+                    gen_gz_file(coh, chrom, self.options.platform), nsample, self.options.factor_file, coh, chrom), verbose=True)
 
     def restricted_genofile(self, coh):
         f = self.options.outfile + coh + 'r'
-        if self.snpfile:
-            f += '-' + os.path.basename(self.snpfile)
+        if self.options.snpfile:
+            f += '-' + os.path.basename(self.options.snpfile)
         return f
     
     def excluded_genofile(self, coh):
         f = self.options.outfile + coh + 'x'
-        if self.snpfile:
-            f += '-' + os.path.basename(self.snpfile)
+        if self.options.snpfile:
+            f += '-' + os.path.basename(self.options.snpfile)
         return f
 
 def gen_gz_file(coh, chrom, platform):
