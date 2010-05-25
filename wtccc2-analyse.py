@@ -198,15 +198,16 @@ class App(CommandLineApp):
 
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
+            coh_outfile = opts.outfile + '-' + coh
             cmd = 'shellfish --make-%s --file %s %s --out %s' % \
                 (self.format,
-                 opts.outfile + '-' + coh,
+                 coh_outfile,
                  '--file2 %s' % opts.snpfile if opts.snpfile else '',
                  self.restricted_genofile(coh) )
             system(cmd, verbose=True)
-            system('mv %s.sample %s.sample' % (coh, self.restricted_genofile(coh)))
+            system('mv %s.sample %s.sample' % (coh_outfile, self.restricted_genofile(coh)))
             if opts.snpfile or self.format == 'geno': # In which case a new genotype file has been created
-                system('rm %s.gen' % coh)
+                system('rm %s.gen' % coh_outfile)
 
     def exclude_individuals(self):
         for coh in self.cohorts:
