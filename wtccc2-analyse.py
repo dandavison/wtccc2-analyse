@@ -245,7 +245,7 @@ class App(CommandLineApp):
                 idx = map(int, read_lines('%s.xidx' % coh))
                 firstofthree = [6 + (i-1)*3 for i in idx]
                 idx = flatten([range(s, s+3) for s in firstofthree])
-                write_lines(idx, '%s.xidx' % coh)
+                write_lines(map(str, idx), '%s.xidx' % coh)
 
             # Exclude individuals from genotype data
             cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
