@@ -176,7 +176,7 @@ class App(CommandLineApp):
         outdir = self.insect_dir
         if not os.path.exists(outdir): os.mkdir(outdir)
         for chrom in self.chroms:
-            fnames = ['%s-%02d.tmp' % (coh, chrom) for coh in self.cohorts]
+            fnames = ['%s-%s-%02d.tmp' % (self.outfile, coh, chrom) for coh in self.cohorts]
             for i in range(len(self.cohorts)):
                 coh = self.cohorts[i]
                 with open(fnames[i], 'w') as f:
@@ -221,7 +221,7 @@ class App(CommandLineApp):
                     (project_excludeglob, self.options.excludefile or "", coh)
             else:
                 ## Get IDs to keep
-                tempfile = "/tmp/%s.ids" % coh
+                tempfile = "/tmp/%s-%s.ids" % (self.outfile, coh)
                 cmd = "sed 1,2d %s | cut -d ' ' -f 1 > %s ; " % \
                     (user_sample_file(self.samplefile, coh), tempfile)
                 cmd += "sed 1,2d %s | cut -d ' ' -f 1 | grep -vf %s > %s.xids" % \
@@ -238,8 +238,8 @@ class App(CommandLineApp):
             cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
                 (coh, coh)
             system(cmd)
-            cmd = 'grep -vF NA %s.xidx | sort -n > tmp && mv tmp %s.xidx' % \
-                (coh, coh)
+            cmd = 'grep -vF NA %s.xidx | sort -n > %s-tmp && mv %s-tmp %s.xidx' % \
+                (coh, coh, self.outfile, self.outfile)
             system(cmd, verbose=True)
 
             if self.format == 'gen':
