@@ -191,7 +191,7 @@ class App(CommandLineApp):
             gen_file = opts.outfile + '-' + coh + '.gen'
             sample_file = opts.outfile + '-' + coh + '.sample'
             with open(gen_file, 'w') as f:
-                cmd = 'cat %s/%s-*' % (self.insect_dir, coh)
+                cmd = 'cat %s/%s-%s-*' % (self.insect_dir, opts.outfile, coh)
                 Popen([cmd], shell=True, stdout=f).communicate()
             if not(os.path.exists(sample_file)):
                 os.symlink(sample_file(coh, opts.platform), sample_file)
