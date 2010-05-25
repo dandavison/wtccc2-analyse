@@ -200,7 +200,7 @@ class App(CommandLineApp):
         for coh in self.cohorts:
             cmd = 'shellfish --make-%s --file %s %s --out %s' % \
                 (self.format,
-                 coh,
+                 self.outfile + '-' + coh,
                  '--file2 %s' % opts.snpfile if opts.snpfile else '',
                  self.restricted_genofile(coh) )
             system(cmd, verbose=True)
