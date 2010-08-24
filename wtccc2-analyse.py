@@ -56,6 +56,8 @@ class App(CommandLineApp):
                           'in addition to project exclusions (one ID per line)')
         op.add_option('-n', dest='dry_run', default=False, action='store_true',
                       help="Don't actually do anything, just print commands")
+        op.add_option('', '--messy', dest='messy', default=False, action='store_true',
+                      help="Do not remove intermediate files")
         op.add_option('--platform', dest='platform', type='string', default=None)
 
     def main(self):
@@ -141,8 +143,9 @@ class App(CommandLineApp):
         fnames = [coh + '.gen' for coh in self.cohorts]
         if not all(map(os.path.exists, fnames)):
             self.concatenate_chromosomes()
-            system('rm %s/*' % self.insect_dir)
-            system('rmdir %s' % self.insect_dir)
+            if not opts.messy:
+                system('rm %s/*' % self.insect_dir)
+                system('rmdir %s' % self.insect_dir)
 
         def files_exist(bnames):
             geno = [b + '.' + self.format for b in bnames]
@@ -183,7 +186,7 @@ class App(CommandLineApp):
                     
             cmd = ['insect', '-v', '--unique', "-d ' '", '-f 2', '-o ' + outdir] + fnames
             # subprocess.Popen(cmd, shell=True).communicate()
-            system(' '.join(cmd))
+            system(' '.join(cmd), verbose=True)
             map(os.remove, fnames)
 
     def concatenate_chromosomes(self):
@@ -199,15 +202,17 @@ class App(CommandLineApp):
     def restrict_to_selected_SNPs(self):
         for coh in self.cohorts:
             coh_outfile = opts.outfile + '-' + coh
-            cmd = 'shellfish --make-%s --file %s %s --out %s' % \
+            cmd = 'shellfish --make-%s --file %s %s --out %s %s' % \
                 (self.format,
                  coh_outfile,
                  '--file2 %s' % opts.snpfile if opts.snpfile else '',
-                 self.restricted_genofile(coh) )
+                 self.restricted_genofile(coh),
+                 '--messy' if opts.messy else '')
             system(cmd, verbose=True)
-            system('mv %s.sample %s.sample' % (coh_outfile, self.restricted_genofile(coh)))
-            if opts.snpfile or self.format == 'geno': # In which case a new genotype file has been created
-                system('rm %s.gen' % coh_outfile)
+            system('mv %s.sample %s.sample' % (coh_outfile, self.restricted_genofile(coh)), verbose=True)
+            if not opts.messy and \
+                    opts.snpfile or self.format == 'geno': # In which case a new genotype file has been created
+                system('rm %s.gen' % coh_outfile, verbose=True)
 
     def exclude_individuals(self):
         for coh in self.cohorts:
@@ -263,9 +268,10 @@ class App(CommandLineApp):
                 (wtccc2_sample_file(coh, opts.platform), coh_outfile, self.excluded_genofile(coh))
             system(cmd, verbose=True)
 
-            # clean up
-            system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
-            system('rm %s.xids %s.xidx' % (coh_outfile, coh_outfile))
+            if not opts.messy:
+                # clean up
+                system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
+                system('rm %s.xids %s.xidx' % (coh_outfile, coh_outfile), verbose=True)
 
             if self.format == 'geno':
                 system('mv %s.map %s.map' % (
@@ -324,6 +330,7 @@ class App(CommandLineApp):
             cmd += ' --cases ' + ' '.join(case_files) + ' --controls ' + ' '.join(control_files)
             cmd += ' --outfile %s' % opts.outfile
             cmd += ' --snptest-chunk 1000 --snptest-opts %s' % opts.snptest_opts
+            cmd += ' --messy' if opts.messy else ''
             system(cmd, verbose=True)
 
         else:
@@ -345,6 +352,7 @@ class App(CommandLineApp):
             remote_cmd += ' --cases ' + ' '.join(case_files) + ' --controls ' + ' '.join(control_files)
             remote_cmd += ' --outfile %s/%s' % (remote_dir, opts.outfile)
             remote_cmd += ' --snptest-chunk 1000 --snptest-opts %s' % opts.snptest_opts
+            remote_cmd += ' --messy' if opts.messy else ''
             remote_cmd = "'nohup %s < /dev/null > %s/log 2>&1 &'" % (remote_cmd, remote_dir)
             
             cmd = 'ssh %s %s' % (remote, remote_cmd)
@@ -359,18 +367,19 @@ class App(CommandLineApp):
         if not os.path.exists(self.excluded_genofile('all') + '.evecs'):
 
             cmd = "ssh %s 'mkdir -p %s'" % (remote, remote_dir)
-            system(cmd)
+            system(cmd, verbose=True)
             
             tup = ((self.excluded_genofile('all'),) * 3) + (remote, remote_dir)
             cmd = 'scp %s.geno %s.map %s.ids %s:%s/' % tup
-            system(cmd)
+            system(cmd, verbose=True)
             
             remote_cmd = "shellfish --pca --sge --sge-level 2 --numpcs 10 --maxprocs 500 "
             remote_cmd += "--file %s --out %s" % ((self.excluded_genofile('all'),) * 2)
+            remote_cmd += ' --messy' if opts.messy else ''
             remote_cmd = "'cd %s && nohup %s < /dev/null > log 2>&1'" % (remote_dir, remote_cmd)
 
             cmd = 'ssh %s %s &' % (remote, remote_cmd)
-            system(cmd)
+            system(cmd, verbose=True)
 
     def sstat(self):
         """Run sstat on each cohort file for each chromosome"""
@@ -382,7 +391,8 @@ class App(CommandLineApp):
                     (nsample, nfac)))
         for chrom in opts.chroms:
             system('gunzip -c %s | sstat -n %d -p -f %s > %s-%02d.sstat' % (
-                    gen_gz_file(coh, chrom, opts.platform), nsample, opts.factor_file, coh, chrom), verbose=True)
+                    gen_gz_file(coh, chrom, opts.platform), nsample, opts.factor_file, coh, chrom),
+                   verbose=True)
 
     def restricted_genofile(self, coh):
         f = opts.outfile + '-' + coh + 'r'
