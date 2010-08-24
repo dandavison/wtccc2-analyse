@@ -144,8 +144,8 @@ class App(CommandLineApp):
         if not all(map(os.path.exists, fnames)):
             self.concatenate_chromosomes()
             if not opts.messy:
-                system('rm %s/*' % self.insect_dir)
-                system('rmdir %s' % self.insect_dir)
+                system('rm %s/*' % self.insect_dir, verbose=True)
+                system('rmdir %s' % self.insect_dir, verbose=True)
 
         def files_exist(bnames):
             geno = [b + '.' + self.format for b in bnames]

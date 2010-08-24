@@ -1,6 +1,6 @@
 [submodule "dedpy"]
 	path = dedpy
-	url = /home/dan/src/dedpy
+	url = git@github.com:dandavison/dedpy.git
 [submodule "cmdline"]
 	path = cmdline
-	url = /usr/local/src/cmdline
+	url = git@github.com:dandavison/cmdline.git
