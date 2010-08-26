@@ -236,15 +236,15 @@ class App(CommandLineApp):
 
             # Get cohort indices of individuals to be excluded
             # These are the (line index in sample file) - 2, because sample file has 2 header lines.
-            cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.xidx" % \
+            cmd = "sed 1,2d %s | cut -d ' ' -f 1 | match %s.xids > %s.wNA.xidx" % \
                 (wtccc2_sample_file(coh, opts.platform), coh_outfile, coh_outfile)
             system(cmd, verbose=True)
 
             # Check for IDs that did not appear in cohort sample file
-            cmd = 'echo "%s: `grep -F NA %s.xidx  | wc -l` excluded individuals not recognised"' % \
+            cmd = 'echo "%s: `grep -F NA %s.wNA.xidx  | wc -l` excluded individuals not recognised"' % \
                 (coh, coh_outfile)
             system(cmd)
-            cmd = 'grep -vF NA %s.xidx | sort -n > %s-tmp && mv %s-tmp %s.xidx' % \
+            cmd = 'grep -vF NA %s.wNA.xidx | sort -n > %s-tmp && mv %s-tmp %s.xidx' % \
                 (coh_outfile, coh_outfile, coh_outfile, coh_outfile)
             system(cmd, verbose=True)
 
@@ -271,7 +271,7 @@ class App(CommandLineApp):
             if not opts.messy:
                 # clean up
                 system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
-                system('rm %s.xids %s.xidx' % (coh_outfile, coh_outfile), verbose=True)
+                system('rm %s.wNA.idx %s.xids %s.xidx' % (coh_outfile,)*3, verbose=True)
 
             if self.format == 'geno':
                 system('mv %s.map %s.map' % (
