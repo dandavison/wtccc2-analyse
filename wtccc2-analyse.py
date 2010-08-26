@@ -306,17 +306,19 @@ class App(CommandLineApp):
             cmd = "paste -d ' ' %s %s > %s.gen" % (
                 gen_files[0], ' '.join(gen_only_files[1:]), combined_basename)
             system(cmd, verbose=True)
-            map(os.remove, gen_only_files)
+            if not opts.messy:
+                map(os.remove, gen_only_files)
 
         ## Combine .ids files
         cmd = 'cat %s > %s.ids' % (' '.join(id_files), combined_basename)
         system(cmd, verbose=True)
             
-        ## Clean up
-        map(os.remove, gen_files)
-        map(os.remove, map_files)
-        map(os.remove, id_files)
-        map(os.remove, sample_files)
+        if not opts.messy:
+            # Clean up
+            map(os.remove, gen_files)
+            map(os.remove, map_files)
+            map(os.remove, id_files)
+            map(os.remove, sample_files)
 
     def snptest(self):
         case_files = [self.excluded_genofile(coh) for coh in self.cases]
