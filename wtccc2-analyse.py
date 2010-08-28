@@ -422,7 +422,10 @@ def user_sample_file(basename, coh):
     return '%s.%s' % (basename, coh)
 
 def exclude_dir(coh, platform):
-    return '%s/%s/%s/exclusions' % (__datadir__, coh, platform)
+    if coh == 'MS':
+        return '%s/immunochip/%s/%s/exclusions' % (__datadir__, coh, platform)
+    else:
+        return '%s/%s/%s/exclusions' % (__datadir__, coh, platform)
 
 def Popen(cmd, shell=False, stdout=None):
     print(' '.join(cmd) + (' > ' + stdout.name if stdout else ''))
