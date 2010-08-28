@@ -244,34 +244,36 @@ class App(CommandLineApp):
             cmd = 'echo "%s: `grep -F NA %s.wNA.xidx  | wc -l` excluded individuals not recognised"' % \
                 (coh, coh_outfile)
             system(cmd)
-            cmd = 'grep -vF NA %s.wNA.xidx | sort -n > %s-tmp && mv %s-tmp %s.xidx' % \
-                (coh_outfile, coh_outfile, coh_outfile, coh_outfile)
+
+            cmd = 'grep -vF NA %s.wNA.xidx | sort -n > %s.xidx' % ((coh_outfile,)*2)
             system(cmd, verbose=True)
 
-            if self.format == 'gen':
-                # Compute columns of .gen file to be excluded
-                idx = map(int, read_lines('%s.xidx' % coh_outfile))
-                firstofthree = [6 + (i-1)*3 for i in idx]
-                idx = flatten([range(s, s+3) for s in firstofthree])
-                write_lines(map(str, idx), '%s.xidx' % coh_outfile)
-
-            # Exclude individuals from genotype data
-            cmd = 'columns %s -v -f %s.xidx < %s.%s > %s.%s' % (
-                '-s' if self.format == 'gen' else '',
-                coh_outfile,
-                self.restricted_genofile(coh), self.format,
-                self.excluded_genofile(coh), self.format)
-            system(cmd, verbose=True)
-                
             # Get IDs of included individuals
             cmd = "sed 1,2d %s | cut -d ' ' -f 1 | slice -v --line-file %s.xidx > %s.ids" % \
                 (wtccc2_sample_file(coh, opts.platform), coh_outfile, self.excluded_genofile(coh))
             system(cmd, verbose=True)
 
+            # Convert indices to .gen file triplet indices
+            if self.format == 'gen':
+                # Compute columns of .gen file to be excluded
+                print('Writing .gen triplet indices to %s.gen.xidx' % coh_outfile)
+                idx = map(int, read_lines('%s.xidx' % coh_outfile))
+                firstofthree = [6 + (i-1)*3 for i in idx]
+                idx = flatten([range(s, s+3) for s in firstofthree])
+                write_lines(map(str, idx), '%s.gen.xidx' % coh_outfile)
+
+            # Exclude individuals from genotype data
+            cmd = 'columns %s -v -f %s.gen.xidx < %s.%s > %s.%s' % (
+                '-s' if self.format == 'gen' else '',
+                coh_outfile,
+                self.restricted_genofile(coh), self.format,
+                self.excluded_genofile(coh), self.format)
+            system(cmd, verbose=True)
+
             if not opts.messy:
                 # clean up
                 system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
-                system('rm %s.wNA.idx %s.xids %s.xidx' % (coh_outfile,)*3, verbose=True)
+                system('rm %s.wNA.idx %s.xids %s.xidx %s.gen.xidx' % (coh_outfile,)*3, verbose=True)
 
             if self.format == 'geno':
                 system('mv %s.map %s.map' % (
