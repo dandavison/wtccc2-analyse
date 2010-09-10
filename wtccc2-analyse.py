@@ -273,7 +273,7 @@ class App(CommandLineApp):
             if not opts.messy:
                 # clean up
                 system('rm %s.%s' % (self.restricted_genofile(coh), self.format), verbose=True)
-                system('rm %s.wNA.idx %s.xids %s.xidx %s.gen.xidx' % ((coh_outfile,)*4), verbose=True)
+                system('rm %s.wNA.xidx %s.xids %s.xidx %s.gen.xidx' % ((coh_outfile,)*4), verbose=True)
 
             if self.format == 'geno':
                 system('mv %s.map %s.map' % (
